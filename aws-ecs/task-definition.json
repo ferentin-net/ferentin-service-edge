@@ -16,7 +16,13 @@
       "portMappings": [
         {
           "containerPort": 9080,
-          "protocol": "tcp"
+          "protocol": "tcp",
+          "name": "http"
+        },
+        {
+          "containerPort": 9443,
+          "protocol": "tcp",
+          "name": "https"
         }
       ],
       "mountPoints": [
@@ -49,6 +55,14 @@
         {
           "name": "BOOTSTRAP_ENABLED",
           "value": "true"
+        },
+        {
+          "name": "TLS_ENABLED",
+          "value": "true"
+        },
+        {
+          "name": "TLS_PORT",
+          "value": "9443"
         }
       ],
       "secrets": [

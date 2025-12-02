@@ -13,5 +13,9 @@ spec:
       port: 9080
       targetPort: 9080
       protocol: TCP
+    - name: https
+      port: 9443
+      targetPort: 9443
+      protocol: TCP
   selector:
     app.kubernetes.io/name: service-edge

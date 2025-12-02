@@ -10,6 +10,8 @@ primary_region = "iad"
 [env]
   SPRING_PROFILES_ACTIVE = "aws-secure"
   BOOTSTRAP_ENABLED = "true"
+  TLS_ENABLED = "true"
+  TLS_PORT = "9443"
   # Set ENROLLMENT_TOKEN via secrets
 
 [http_service]

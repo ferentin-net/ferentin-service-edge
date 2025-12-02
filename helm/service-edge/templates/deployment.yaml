@@ -37,6 +37,11 @@ spec:
             - name: http
               containerPort: 9080
               protocol: TCP
+            {{- if .Values.config.tls.enabled }}
+            - name: https
+              containerPort: {{ .Values.config.tls.port }}
+              protocol: TCP
+            {{- end }}
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: {{ .Values.config.springProfile | quote }}
@@ -66,6 +71,11 @@ spec:
                   name: {{ include "service-edge.fullname" . }}-secrets
                   key: ca-bundle
             {{- end }}
+            # TLS Listener Configuration
+            - name: TLS_ENABLED
+              value: {{ .Values.config.tls.enabled | quote }}
+            - name: TLS_PORT
+              value: {{ .Values.config.tls.port | quote }}
           volumeMounts:
             - name: certs
               mountPath: /opt/ferentin/certs

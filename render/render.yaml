@@ -18,6 +18,10 @@ services:
         value: "true"
       - key: ENROLLMENT_TOKEN
         sync: false  # Set in dashboard
+      - key: TLS_ENABLED
+        value: "true"
+      - key: TLS_PORT
+        value: "9443"
     # Render supports one disk per service
     # Mount to parent and use subdirectories
     disk:

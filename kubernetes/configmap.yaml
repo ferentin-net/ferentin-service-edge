@@ -18,3 +18,8 @@ data:
 
   # Optional: Enable virtual threads
   ENABLE_VIRTUAL_THREADS: "false"
+
+  # TLS Listener Configuration
+  # Enables HTTPS listener on port 9443 (requires server.crt and server.key in /opt/ferentin/certs)
+  TLS_ENABLED: "true"
+  TLS_PORT: "9443"

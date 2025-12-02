@@ -30,6 +30,9 @@ spec:
             - name: http
               containerPort: 9080
               protocol: TCP
+            - name: https
+              containerPort: 9443
+              protocol: TCP
 
           securityContext:
             readOnlyRootFilesystem: true
@@ -49,6 +52,11 @@ spec:
                 secretKeyRef:
                   name: service-edge-secrets
                   key: enrollment-token
+            # TLS Listener Configuration
+            - name: TLS_ENABLED
+              value: "true"
+            - name: TLS_PORT
+              value: "9443"
 
           volumeMounts:
             - name: certs

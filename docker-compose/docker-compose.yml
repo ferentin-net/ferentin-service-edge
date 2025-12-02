@@ -19,7 +19,8 @@ services:
       - /opt/ferentin/tmp:rw,uid=1000,gid=1000,noexec,nosuid,size=100m
 
     ports:
-      - "9080:9080"
+      - "9080:9080"   # HTTP (plaintext)
+      - "9443:9443"   # HTTPS (TLS) - optional, enabled when certs available
 
     environment:
       # Bootstrap enrollment (for first-time setup)
@@ -33,6 +34,9 @@ services:
       - JAVA_OPTS=${JAVA_OPTS:-}
       - ENABLE_VIRTUAL_THREADS=${ENABLE_VIRTUAL_THREADS:-false}
       - EDGE_CA_BUNDLE=${EDGE_CA_BUNDLE:-}
+      # TLS Listener Configuration
+      - TLS_ENABLED=${TLS_ENABLED:-true}
+      - TLS_PORT=${TLS_PORT:-9443}
 
     # Security hardening
     security_opt:
@@ -40,7 +44,7 @@ services:
     cap_drop:
       - ALL
 
-    # Health check
+    # Health check (primary on HTTP port; TLS port optional)
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9080"]
       interval: 30s

@@ -32,6 +32,12 @@ config:
   # Custom CA bundle (PEM format)
   caBundle: ""
 
+  # TLS Listener Configuration
+  # Enables HTTPS listener on port 9443 (requires server.crt and server.key in /opt/ferentin/certs)
+  tls:
+    enabled: true
+    port: 9443
+
 serviceAccount:
   create: true
   annotations: {}
@@ -55,6 +61,7 @@ securityContext:
 service:
   type: ClusterIP
   port: 9080
+  tlsPort: 9443
 
 ingress:
   enabled: false

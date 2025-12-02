@@ -11,5 +11,11 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.config.tls.enabled }}
+    - port: {{ .Values.service.tlsPort }}
+      targetPort: https
+      protocol: TCP
+      name: https
+    {{- end }}
   selector:
     {{- include "service-edge.selectorLabels" . | nindent 4 }}
