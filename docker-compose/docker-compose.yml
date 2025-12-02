@@ -22,11 +22,14 @@ services:
       - "9080:9080"
 
     environment:
-      - EDGE_CONTROL_PLANE_URL=${EDGE_CONTROL_PLANE_URL}
-      - EDGE_ID=${EDGE_ID}
-      - EDGE_TENANT_ID=${EDGE_TENANT_ID}
-      - EDGE_SITE_ID=${EDGE_SITE_ID:-}
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-production}
+      # Bootstrap enrollment (for first-time setup)
+      # After enrollment, certificates are stored in persistent volume
+      - FERENTIN_EDGE_BOOTSTRAP_ENABLED=${FERENTIN_EDGE_BOOTSTRAP_ENABLED:-true}
+      - FERENTIN_EDGE_BOOTSTRAP_ENROLLMENT_TOKEN=${FERENTIN_EDGE_BOOTSTRAP_ENROLLMENT_TOKEN:-}
+      # Spring profile determines control plane URL:
+      # - aws-secure: https://cp.ferentin.net
+      # - nginx: https://cp.local.ferentin.test
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-aws-secure}
       - JAVA_OPTS=${JAVA_OPTS:-}
       - ENABLE_VIRTUAL_THREADS=${ENABLE_VIRTUAL_THREADS:-false}
       - EDGE_CA_BUNDLE=${EDGE_CA_BUNDLE:-}
