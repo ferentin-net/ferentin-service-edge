@@ -1,6 +1,16 @@
 # Ferentin Service Edge
 
-Deployment configurations for Ferentin Service Edge - a hardened, combined edge-agent and edge-runtime container for LLM gateway deployments.
+Deployment configurations for Ferentin Service Edge - a hardened LLM gateway container for edge deployments.
+
+## Overview
+
+Service Edge is a secure, production-ready container that provides:
+
+- **OpenAI-compatible API** for LLM requests
+- **Policy enforcement** for access control and data protection
+- **Automatic certificate management** via bootstrap enrollment
+- **Telemetry and audit logging** to the Ferentin control plane
+- **Multi-provider routing** (OpenAI, Anthropic, Azure, Bedrock, Vertex AI, etc.)
 
 ## Container Images
 
@@ -22,88 +32,103 @@ The Service Edge image is hardened with:
 
 ## Quick Start
 
-### Docker
+### 1. Get an Enrollment Token
+
+1. Log into the [Ferentin Admin Console](https://console.ferentin.net)
+2. Navigate to **Edge Nodes** > **Add Edge Node**
+3. Copy the enrollment token
+
+### 2. Deploy with Docker
 
 ```bash
 # Create persistent volumes
 docker volume create service-edge-certs
-docker volume create service-edge-policies
+docker volume create service-edge-policy
 
-# Run with read-only filesystem
+# Run with bootstrap enrollment
 docker run -d \
   --name service-edge \
   --read-only \
   -v service-edge-certs:/opt/ferentin/certs:rw \
-  -v service-edge-policies:/opt/ferentin/policies:rw \
-  --tmpfs /opt/ferentin/logs:rw,noexec,nosuid,size=100m \
-  --tmpfs /opt/ferentin/data:rw,noexec,nosuid,size=50m \
-  --tmpfs /opt/ferentin/tmp:rw,noexec,nosuid,size=100m \
+  -v service-edge-policy:/opt/ferentin/policy:rw \
+  --tmpfs /opt/ferentin/logs:rw,uid=1000,gid=1000,noexec,nosuid,size=100m \
+  --tmpfs /opt/ferentin/data:rw,uid=1000,gid=1000,noexec,nosuid,size=50m \
+  --tmpfs /opt/ferentin/tmp:rw,uid=1000,gid=1000,noexec,nosuid,size=100m \
   -p 9080:9080 \
-  -e EDGE_CONTROL_PLANE_URL=https://cp.example.com \
-  -e EDGE_ID=edge-001 \
-  -e EDGE_TENANT_ID=tenant-123 \
+  -p 9443:9443 \
+  -e BOOTSTRAP_ENABLED=true \
+  -e ENROLLMENT_TOKEN=your-enrollment-token-here \
+  -e SPRING_PROFILES_ACTIVE=aws-secure \
+  --security-opt no-new-privileges:true \
+  --cap-drop ALL \
   ghcr.io/ferentin-net/service-edge:latest
 ```
 
-### Docker Compose
+### 3. Verify Enrollment
 
 ```bash
-cd docker-compose
-cp .env.example .env
-# Edit .env with your configuration
-docker-compose up -d
+# Check health endpoint
+curl http://localhost:9080/actuator/health
+
+# Test LLM API (after enrollment completes)
+curl http://localhost:9080/v1/models
 ```
 
-### Kubernetes
+## Ports
 
-```bash
-cd kubernetes
-kubectl apply -f namespace.yaml
-kubectl apply -f .
-```
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 9080 | HTTP | API endpoints, health checks |
+| 9443 | HTTPS | TLS-encrypted API (enabled after certificate provisioning) |
 
-### Helm
-
-```bash
-helm install service-edge ./helm/service-edge \
-  --set config.controlPlaneUrl=https://cp.example.com \
-  --set config.edgeId=edge-001 \
-  --set config.tenantId=tenant-123
-```
+The HTTPS listener on port 9443 activates automatically once server certificates are provisioned during bootstrap enrollment.
 
 ## Deployment Guides
 
 | Platform | Guide |
 |----------|-------|
-| Docker Compose | [docker-compose/README.md](docker-compose/README.md) |
-| Kubernetes | [kubernetes/README.md](kubernetes/README.md) |
-| Helm | [helm/service-edge/README.md](helm/service-edge/README.md) |
-| AWS ECS | [aws-ecs/README.md](aws-ecs/README.md) |
-| Fly.io | [fly.io/README.md](fly.io/README.md) |
-| Railway | [railway/README.md](railway/README.md) |
-| Render | [render/README.md](render/README.md) |
+| Docker Compose | [docker-compose/](docker-compose/) |
+| Kubernetes | [kubernetes/](kubernetes/) |
+| Helm | [helm/service-edge/](helm/service-edge/) |
+| AWS ECS | [aws-ecs/](aws-ecs/) |
+| Fly.io | [fly.io/](fly.io/) |
+| Railway | [railway/](railway/) |
+| Render | [render/](render/) |
 
 ## Required Volumes
 
 | Path | Purpose | Type | Persistence |
 |------|---------|------|-------------|
 | `/opt/ferentin/certs` | mTLS certificates | Persistent | **Required** |
-| `/opt/ferentin/policies` | Policy bundles | Persistent | Recommended |
+| `/opt/ferentin/policy` | Policy bundles | Persistent | Recommended |
 | `/opt/ferentin/logs` | Application logs | tmpfs/Persistent | Optional |
 | `/opt/ferentin/data` | Runtime data | tmpfs/Persistent | Optional |
 | `/opt/ferentin/tmp` | Java temp files | tmpfs | Ephemeral |
 
 ## Environment Variables
 
+### Bootstrap Configuration
+
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `EDGE_CONTROL_PLANE_URL` | Yes | - | Control plane URL |
-| `EDGE_ID` | Yes | - | Unique edge node ID |
-| `EDGE_TENANT_ID` | Yes | - | Tenant ID |
-| `EDGE_SITE_ID` | No | - | Site ID for multi-site |
-| `SPRING_PROFILES_ACTIVE` | No | `production` | Spring profile |
-| `JAVA_OPTS` | No | See docs | JVM options |
-| `ENABLE_VIRTUAL_THREADS` | No | `false` | Enable virtual threads |
+| `BOOTSTRAP_ENABLED` | Yes (first run) | `false` | Enable bootstrap enrollment |
+| `ENROLLMENT_TOKEN` | Yes (first run) | - | JWT enrollment token from admin console |
+| `SPRING_PROFILES_ACTIVE` | No | `aws-secure` | Spring profile for configuration |
+
+### TLS Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `TLS_ENABLED` | No | `true` | Enable HTTPS listener on port 9443 |
+| `TLS_PORT` | No | `9443` | HTTPS listener port |
+
+### Runtime Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `JAVA_OPTS` | No | See docs | Additional JVM options |
+| `ENABLE_VIRTUAL_THREADS` | No | `false` | Enable Java 21 virtual threads |
+| `EDGE_CA_BUNDLE` | No | - | Custom CA bundle (PEM format) |
 
 ## Health Checks
 
@@ -111,40 +136,73 @@ helm install service-edge ./helm/service-edge \
 |----------|---------|
 | TCP 9080 | Basic liveness |
 | `/actuator/health` | Full health status |
-| `/actuator/health/liveness` | Kubernetes liveness |
-| `/actuator/health/readiness` | Kubernetes readiness |
+| `/actuator/health/liveness` | Kubernetes liveness probe |
+| `/actuator/health/readiness` | Kubernetes readiness probe |
 
-## Migration from edge-runtime + edge-agent
+## API Endpoints
 
-Service Edge replaces the separate `edge-runtime` and `edge-agent` containers with a single unified container.
+Once enrolled, Service Edge exposes LLM provider-compatible APIs:
 
-### Before (deprecated)
-```yaml
-services:
-  edge-runtime:
-    image: ghcr.io/ferentin-net/edge-runtime:1.0.0
-    ports:
-      - "9081:9081"
-  edge-agent:
-    image: ghcr.io/ferentin-net/edge-agent:1.0.0
-    ports:
-      - "9080:9080"
+### OpenAI-Compatible
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /v1/chat/completions` | Chat completions API |
+| `GET /v1/models` | List available models |
+| `POST /v1/embeddings` | Embeddings API |
+
+### Anthropic-Compatible
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /v1/messages` | Messages API (Claude) |
+
+## Troubleshooting
+
+### Container fails to start with "directory not mounted"
+
+Ensure all required volumes are mounted:
+
+```bash
+docker run --read-only \
+  -v service-edge-certs:/opt/ferentin/certs:rw \
+  -v service-edge-policy:/opt/ferentin/policy:rw \
+  --tmpfs /opt/ferentin/logs:rw,uid=1000,gid=1000 \
+  --tmpfs /opt/ferentin/data:rw,uid=1000,gid=1000 \
+  --tmpfs /opt/ferentin/tmp:rw,uid=1000,gid=1000 \
+  ...
 ```
 
-### After
-```yaml
-services:
-  service-edge:
-    image: ghcr.io/ferentin-net/service-edge:1.0.0
-    ports:
-      - "9080:9080"  # Single port for all endpoints
+### Container fails with "directory not writable"
+
+Fix volume permissions for the non-root user (UID 1000):
+
+```bash
+docker run --rm \
+  -v service-edge-certs:/opt/ferentin/certs \
+  -v service-edge-policy:/opt/ferentin/policy \
+  alpine:latest chown -R 1000:1000 /opt/ferentin/certs /opt/ferentin/policy
 ```
+
+### Bootstrap enrollment fails
+
+1. Verify the enrollment token is valid (not expired)
+2. Check network connectivity to the Ferentin control plane
+3. Review logs: `docker logs service-edge`
+
+### HTTPS listener not starting
+
+The TLS listener requires server certificates in `/opt/ferentin/certs`:
+- `server.crt` - Server certificate
+- `server.key` - Server private key
+
+These are automatically provisioned during bootstrap enrollment.
 
 ## Support
 
-- [Documentation](https://github.com/ferentin-net/ferentin-platform/blob/main/edge-node/docker/README.md)
+- [Documentation](https://docs.ferentin.net)
 - [Issues](https://github.com/ferentin-net/ferentin-service-edge/issues)
-- [Ferentin Platform](https://github.com/ferentin-net/ferentin-platform)
+- [Contact Support](mailto:support@ferentin.net)
 
 ## License
 
