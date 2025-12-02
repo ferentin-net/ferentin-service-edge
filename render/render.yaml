@@ -12,14 +12,12 @@ services:
     healthCheckPath: /actuator/health
     plan: starter
     envVars:
-      - key: EDGE_CONTROL_PLANE_URL
-        value: https://cp.example.com
-      - key: EDGE_ID
-        sync: false  # Set in dashboard
-      - key: EDGE_TENANT_ID
-        sync: false  # Set in dashboard
       - key: SPRING_PROFILES_ACTIVE
-        value: production
+        value: aws-secure
+      - key: BOOTSTRAP_ENABLED
+        value: "true"
+      - key: ENROLLMENT_TOKEN
+        sync: false  # Set in dashboard
     # Render supports one disk per service
     # Mount to parent and use subdirectories
     disk:

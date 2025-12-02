@@ -7,11 +7,14 @@ metadata:
     app.kubernetes.io/name: service-edge
     app.kubernetes.io/component: config
 data:
-  # Control plane URL
-  EDGE_CONTROL_PLANE_URL: "https://cp.example.com"
+  # Spring profile (determines control plane URL)
+  # - aws-secure: Production (https://cp.ferentin.net)
+  # - nginx: Local development (https://cp.local.ferentin.test)
+  SPRING_PROFILES_ACTIVE: "aws-secure"
 
-  # Spring profile
-  SPRING_PROFILES_ACTIVE: "production"
+  # Bootstrap configuration
+  # Set to "true" for first-time enrollment
+  BOOTSTRAP_ENABLED: "true"
 
   # Optional: Enable virtual threads
   ENABLE_VIRTUAL_THREADS: "false"

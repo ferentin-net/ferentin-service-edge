@@ -66,10 +66,18 @@ Key configuration:
 | Volume | Type | Path |
 |--------|------|------|
 | certs | EFS | `/opt/ferentin/certs` |
-| policies | EFS | `/opt/ferentin/policies` |
+| policy | EFS | `/opt/ferentin/policy` |
 | logs | Host | `/opt/ferentin/logs` |
 | data | Host | `/opt/ferentin/data` |
 | tmp | Host | `/opt/ferentin/tmp` |
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SPRING_PROFILES_ACTIVE` | No | Spring profile (default: `aws-secure`) |
+| `BOOTSTRAP_ENABLED` | Yes | Set to `true` for first-time enrollment |
+| `ENROLLMENT_TOKEN` | Yes | Enrollment token from admin console |
 
 ## Security
 
@@ -85,8 +93,8 @@ Use AWS Secrets Manager or SSM Parameter Store:
 ```json
 "secrets": [
   {
-    "name": "EDGE_ID",
-    "valueFrom": "arn:aws:ssm:REGION:ACCOUNT:parameter/service-edge/id"
+    "name": "ENROLLMENT_TOKEN",
+    "valueFrom": "arn:aws:ssm:REGION:ACCOUNT:parameter/service-edge/enrollment-token"
   }
 ]
 ```

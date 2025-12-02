@@ -38,24 +38,21 @@ spec:
               containerPort: 9080
               protocol: TCP
           env:
-            - name: EDGE_CONTROL_PLANE_URL
-              value: {{ .Values.config.controlPlaneUrl | quote }}
-            - name: EDGE_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "service-edge.fullname" . }}-secrets
-                  key: edge-id
-            - name: EDGE_TENANT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "service-edge.fullname" . }}-secrets
-                  key: tenant-id
-            {{- if .Values.config.siteId }}
-            - name: EDGE_SITE_ID
-              value: {{ .Values.config.siteId | quote }}
-            {{- end }}
             - name: SPRING_PROFILES_ACTIVE
               value: {{ .Values.config.springProfile | quote }}
+            - name: BOOTSTRAP_ENABLED
+              value: {{ .Values.config.bootstrap.enabled | quote }}
+            {{- if .Values.config.bootstrap.force }}
+            - name: BOOTSTRAP_FORCE
+              value: {{ .Values.config.bootstrap.force | quote }}
+            {{- end }}
+            {{- if .Values.config.bootstrap.enrollmentToken }}
+            - name: ENROLLMENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "service-edge.fullname" . }}-secrets
+                  key: enrollment-token
+            {{- end }}
             - name: ENABLE_VIRTUAL_THREADS
               value: {{ .Values.config.enableVirtualThreads | quote }}
             {{- if .Values.config.javaOpts }}
@@ -72,8 +69,8 @@ spec:
           volumeMounts:
             - name: certs
               mountPath: /opt/ferentin/certs
-            - name: policies
-              mountPath: /opt/ferentin/policies
+            - name: policy
+              mountPath: /opt/ferentin/policy
             - name: logs
               mountPath: /opt/ferentin/logs
             - name: data
@@ -107,14 +104,14 @@ spec:
           emptyDir:
             sizeLimit: {{ .Values.persistence.certs.size }}
         {{- end }}
-        {{- if .Values.persistence.policies.enabled }}
-        - name: policies
+        {{- if .Values.persistence.policy.enabled }}
+        - name: policy
           persistentVolumeClaim:
-            claimName: {{ include "service-edge.fullname" . }}-policies
+            claimName: {{ include "service-edge.fullname" . }}-policy
         {{- else }}
-        - name: policies
+        - name: policy
           emptyDir:
-            sizeLimit: {{ .Values.persistence.policies.size }}
+            sizeLimit: {{ .Values.persistence.policy.size }}
         {{- end }}
         - name: logs
           emptyDir:

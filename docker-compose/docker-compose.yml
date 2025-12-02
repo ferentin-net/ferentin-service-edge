@@ -7,16 +7,16 @@ services:
     restart: unless-stopped
     read_only: true
 
-    # Persistent volumes for certs and policies
+    # Persistent volumes for certs and policy
     volumes:
       - service-edge-certs:/opt/ferentin/certs:rw
-      - service-edge-policies:/opt/ferentin/policies:rw
+      - service-edge-policy:/opt/ferentin/policy:rw
 
-    # Ephemeral tmpfs for logs, data, tmp
+    # Ephemeral tmpfs for logs, data, tmp (with uid/gid for non-root user)
     tmpfs:
-      - /opt/ferentin/logs:rw,noexec,nosuid,size=100m
-      - /opt/ferentin/data:rw,noexec,nosuid,size=50m
-      - /opt/ferentin/tmp:rw,noexec,nosuid,size=100m
+      - /opt/ferentin/logs:rw,uid=1000,gid=1000,noexec,nosuid,size=100m
+      - /opt/ferentin/data:rw,uid=1000,gid=1000,noexec,nosuid,size=50m
+      - /opt/ferentin/tmp:rw,uid=1000,gid=1000,noexec,nosuid,size=100m
 
     ports:
       - "9080:9080"
@@ -24,11 +24,11 @@ services:
     environment:
       # Bootstrap enrollment (for first-time setup)
       # After enrollment, certificates are stored in persistent volume
-      - FERENTIN_EDGE_BOOTSTRAP_ENABLED=${FERENTIN_EDGE_BOOTSTRAP_ENABLED:-true}
-      - FERENTIN_EDGE_BOOTSTRAP_ENROLLMENT_TOKEN=${FERENTIN_EDGE_BOOTSTRAP_ENROLLMENT_TOKEN:-}
+      - BOOTSTRAP_ENABLED=${BOOTSTRAP_ENABLED:-true}
+      - ENROLLMENT_TOKEN=${ENROLLMENT_TOKEN:-}
       # Spring profile determines control plane URL:
-      # - aws-secure: https://cp.ferentin.net
-      # - nginx: https://cp.local.ferentin.test
+      # - aws-secure: https://cp.ferentin.net (production)
+      # - nginx: https://cp.local.ferentin.test (local development)
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-aws-secure}
       - JAVA_OPTS=${JAVA_OPTS:-}
       - ENABLE_VIRTUAL_THREADS=${ENABLE_VIRTUAL_THREADS:-false}
@@ -61,7 +61,7 @@ services:
 volumes:
   service-edge-certs:
     driver: local
-  service-edge-policies:
+  service-edge-policy:
     driver: local
 
 networks:

@@ -29,11 +29,9 @@ Deploy Ferentin Service Edge to Render.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `EDGE_CONTROL_PLANE_URL` | Yes | Control plane URL |
-| `EDGE_ID` | Yes | Edge node ID |
-| `EDGE_TENANT_ID` | Yes | Tenant ID |
-| `EDGE_SITE_ID` | No | Site ID |
-| `SPRING_PROFILES_ACTIVE` | No | Spring profile |
+| `SPRING_PROFILES_ACTIVE` | No | Spring profile (default: `aws-secure`) |
+| `BOOTSTRAP_ENABLED` | Yes | Set to `true` for first-time enrollment |
+| `ENROLLMENT_TOKEN` | Yes | Enrollment token from admin console |
 
 ### Persistent Storage
 
@@ -45,13 +43,15 @@ Render supports one disk per service. The recommended approach is to mount a sin
 
 The service edge will use:
 - `/opt/ferentin/storage/certs` - Certificates
-- `/opt/ferentin/storage/policies` - Policies
+- `/opt/ferentin/storage/policy` - Policies
 
 **Note**: You may need to configure environment variables to override default paths:
 
 ```bash
-FERENTIN_CERTS_PATH=/opt/ferentin/storage/certs
-FERENTIN_POLICIES_PATH=/opt/ferentin/storage/policies
+MTLS_CERT_PATH=/opt/ferentin/storage/certs/client.crt
+MTLS_KEY_PATH=/opt/ferentin/storage/certs/client.key
+MTLS_CA_PATH=/opt/ferentin/storage/certs/ca.crt
+POLICY_BUNDLE_DIR=/opt/ferentin/storage/policy
 ```
 
 ## Scaling

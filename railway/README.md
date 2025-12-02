@@ -29,10 +29,9 @@ railway init
 railway link
 
 # Set environment variables
-railway variables set EDGE_CONTROL_PLANE_URL=https://cp.example.com
-railway variables set EDGE_ID=edge-001
-railway variables set EDGE_TENANT_ID=tenant-123
-railway variables set SPRING_PROFILES_ACTIVE=production
+railway variables set SPRING_PROFILES_ACTIVE=aws-secure
+railway variables set BOOTSTRAP_ENABLED=true
+railway variables set ENROLLMENT_TOKEN=your-enrollment-token-here
 
 # Deploy
 railway up
@@ -44,11 +43,9 @@ Configure in Railway dashboard or CLI:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `EDGE_CONTROL_PLANE_URL` | Yes | Control plane URL |
-| `EDGE_ID` | Yes | Edge node ID |
-| `EDGE_TENANT_ID` | Yes | Tenant ID |
-| `EDGE_SITE_ID` | No | Site ID |
-| `SPRING_PROFILES_ACTIVE` | No | Spring profile |
+| `SPRING_PROFILES_ACTIVE` | No | Spring profile (default: `aws-secure`) |
+| `BOOTSTRAP_ENABLED` | Yes | Set to `true` for first-time enrollment |
+| `ENROLLMENT_TOKEN` | Yes | Enrollment token from admin console |
 
 ## Volumes
 
@@ -58,7 +55,7 @@ Railway supports persistent volumes through the dashboard:
 2. Click "Add Volume"
 3. Mount paths:
    - `/opt/ferentin/certs` - For certificates (required)
-   - `/opt/ferentin/policies` - For policies (recommended)
+   - `/opt/ferentin/policy` - For policies (recommended)
 
 ## Custom Domain
 

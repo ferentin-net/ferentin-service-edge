@@ -16,6 +16,14 @@ cp .env.example .env
 # Add your enrollment token to .env
 nano .env
 
+# Fix volume permissions (required for non-root container)
+docker volume create service-edge-certs
+docker volume create service-edge-policy
+docker run --rm \
+  -v service-edge-certs:/opt/ferentin/certs \
+  -v service-edge-policy:/opt/ferentin/policy \
+  alpine:latest chown -R 1000:1000 /opt/ferentin/certs /opt/ferentin/policy
+
 # Start the service
 docker-compose up -d
 
@@ -32,10 +40,10 @@ Edit `.env` file with your settings:
 
 ```bash
 # Required: Enrollment token from admin console
-FERENTIN_EDGE_BOOTSTRAP_ENROLLMENT_TOKEN=your-token-here
+ENROLLMENT_TOKEN=your-token-here
 
 # Required: Enable bootstrap for first-time enrollment
-FERENTIN_EDGE_BOOTSTRAP_ENABLED=true
+BOOTSTRAP_ENABLED=true
 
 # Required: Spring profile (determines control plane URL)
 # - aws-secure: Production (https://cp.ferentin.net)
@@ -61,8 +69,8 @@ The certificates and identity are stored in persistent volumes and reused on sub
 ## After Enrollment
 
 Once enrolled, you can:
-- Remove the `FERENTIN_EDGE_BOOTSTRAP_ENROLLMENT_TOKEN` from `.env`
-- Set `FERENTIN_EDGE_BOOTSTRAP_ENABLED=false`
+- Remove the `ENROLLMENT_TOKEN` from `.env`
+- Set `BOOTSTRAP_ENABLED=false`
 
 The edge will use the certificates stored in the persistent volume.
 
@@ -73,7 +81,7 @@ The following volumes are created:
 | Volume | Purpose |
 |--------|---------|
 | `service-edge-certs` | mTLS certificates (persistent) |
-| `service-edge-policies` | Policy bundles (persistent) |
+| `service-edge-policy` | Policy bundles (persistent) |
 
 Logs, data, and tmp directories use tmpfs (ephemeral).
 
@@ -113,15 +121,15 @@ If you need to re-enroll (e.g., certificates expired):
 
 1. Obtain a new enrollment token from admin console
 2. Update `.env` with the new token
-3. Set `FERENTIN_EDGE_BOOTSTRAP_ENABLED=true`
-4. Optionally set `FERENTIN_EDGE_BOOTSTRAP_FORCE=true` to force re-enrollment
+3. Set `BOOTSTRAP_ENABLED=true`
+4. Optionally set `BOOTSTRAP_FORCE=true` to force re-enrollment
 5. Restart: `docker-compose up -d`
 
 ## Production Configuration
 
 For production, consider:
 
-1. **External volumes**: Mount persistent storage for certs/policies
+1. **External volumes**: Mount persistent storage for certs/policy
 2. **Logging driver**: Configure log rotation or external logging
 3. **Network**: Use overlay network for multi-host setups
 4. **Secrets**: Use Docker secrets for the enrollment token

@@ -25,8 +25,8 @@
           "containerPath": "/opt/ferentin/certs"
         },
         {
-          "sourceVolume": "policies",
-          "containerPath": "/opt/ferentin/policies"
+          "sourceVolume": "policy",
+          "containerPath": "/opt/ferentin/policy"
         },
         {
           "sourceVolume": "logs",
@@ -43,22 +43,18 @@
       ],
       "environment": [
         {
-          "name": "EDGE_CONTROL_PLANE_URL",
-          "value": "https://cp.example.com"
-        },
-        {
           "name": "SPRING_PROFILES_ACTIVE",
           "value": "aws-secure"
+        },
+        {
+          "name": "BOOTSTRAP_ENABLED",
+          "value": "true"
         }
       ],
       "secrets": [
         {
-          "name": "EDGE_ID",
-          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/service-edge/id"
-        },
-        {
-          "name": "EDGE_TENANT_ID",
-          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/service-edge/tenant-id"
+          "name": "ENROLLMENT_TOKEN",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/service-edge/enrollment-token"
         }
       ],
       "healthCheck": {
@@ -93,10 +89,10 @@
       }
     },
     {
-      "name": "policies",
+      "name": "policy",
       "efsVolumeConfiguration": {
         "fileSystemId": "fs-xxxxxxxx",
-        "rootDirectory": "/service-edge/policies",
+        "rootDirectory": "/service-edge/policy",
         "transitEncryption": "ENABLED"
       }
     },

@@ -43,22 +43,18 @@ spec:
                 name: service-edge-config
 
           env:
-            - name: EDGE_ID
+            # Enrollment token from secret (for first-time setup)
+            - name: ENROLLMENT_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: service-edge-secrets
-                  key: edge-id
-            - name: EDGE_TENANT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: service-edge-secrets
-                  key: tenant-id
+                  key: enrollment-token
 
           volumeMounts:
             - name: certs
               mountPath: /opt/ferentin/certs
-            - name: policies
-              mountPath: /opt/ferentin/policies
+            - name: policy
+              mountPath: /opt/ferentin/policy
             - name: logs
               mountPath: /opt/ferentin/logs
             - name: data
@@ -92,13 +88,13 @@ spec:
               cpu: "1000m"
 
       volumes:
-        # Persistent volumes for certs and policies
+        # Persistent volumes for certs and policy
         - name: certs
           persistentVolumeClaim:
             claimName: service-edge-certs-pvc
-        - name: policies
+        - name: policy
           persistentVolumeClaim:
-            claimName: service-edge-policies-pvc
+            claimName: service-edge-policy-pvc
         # Ephemeral volumes for logs, data, tmp
         - name: logs
           emptyDir:

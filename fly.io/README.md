@@ -16,15 +16,12 @@ fly auth login
 # Launch the app (first time)
 fly launch --no-deploy
 
-# Set secrets
-fly secrets set \
-  EDGE_CONTROL_PLANE_URL=https://cp.example.com \
-  EDGE_ID=edge-001 \
-  EDGE_TENANT_ID=tenant-123
+# Set secrets (enrollment token from admin console)
+fly secrets set ENROLLMENT_TOKEN=your-enrollment-token-here
 
 # Create persistent volumes
 fly volumes create service_edge_certs --size 1 --region iad
-fly volumes create service_edge_policies --size 1 --region iad
+fly volumes create service_edge_policy --size 1 --region iad
 
 # Deploy
 fly deploy
@@ -32,13 +29,19 @@ fly deploy
 
 ## Configuration
 
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SPRING_PROFILES_ACTIVE` | No | Spring profile (default: `aws-secure`) |
+| `BOOTSTRAP_ENABLED` | No | Enable bootstrap (default: `true`) |
+| `ENROLLMENT_TOKEN` | Yes | Enrollment token from admin console |
+
 ### Secrets
 
 ```bash
-fly secrets set EDGE_CONTROL_PLANE_URL=https://cp.example.com
-fly secrets set EDGE_ID=edge-001
-fly secrets set EDGE_TENANT_ID=tenant-123
-fly secrets set EDGE_SITE_ID=site-001  # Optional
+# Set enrollment token (required for first-time setup)
+fly secrets set ENROLLMENT_TOKEN=your-enrollment-token-here
 ```
 
 ### Scaling
@@ -59,7 +62,7 @@ The app requires two persistent volumes:
 | Volume | Path | Purpose |
 |--------|------|---------|
 | `service_edge_certs` | `/opt/ferentin/certs` | mTLS certificates |
-| `service_edge_policies` | `/opt/ferentin/policies` | Policy bundles |
+| `service_edge_policy` | `/opt/ferentin/policy` | Policy bundles |
 
 ```bash
 # List volumes

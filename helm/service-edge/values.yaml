@@ -13,16 +13,18 @@ fullnameOverride: ""
 
 # Service Edge configuration
 config:
-  # Required: Control plane URL
-  controlPlaneUrl: "https://cp.example.com"
-  # Required: Edge node ID
-  edgeId: ""
-  # Required: Tenant ID
-  tenantId: ""
-  # Optional: Site ID for multi-site deployments
-  siteId: ""
-  # Spring profile
-  springProfile: "production"
+  # Spring profile (determines control plane URL)
+  # - aws-secure: Production (https://cp.ferentin.net)
+  # - nginx: Local development (https://cp.local.ferentin.test)
+  springProfile: "aws-secure"
+
+  # Bootstrap configuration (for first-time enrollment)
+  bootstrap:
+    enabled: true
+    force: false
+    # Enrollment token from admin console
+    enrollmentToken: ""
+
   # Enable virtual threads
   enableVirtualThreads: false
   # Custom JVM options
@@ -80,7 +82,7 @@ persistence:
     size: 100Mi
     storageClass: ""
     accessMode: ReadWriteOnce
-  policies:
+  policy:
     enabled: true
     size: 100Mi
     storageClass: ""

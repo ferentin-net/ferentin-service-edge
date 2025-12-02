@@ -8,8 +8,9 @@ primary_region = "iad"
   image = "ghcr.io/ferentin-net/service-edge:latest"
 
 [env]
-  SPRING_PROFILES_ACTIVE = "production"
-  # Set EDGE_CONTROL_PLANE_URL via secrets
+  SPRING_PROFILES_ACTIVE = "aws-secure"
+  BOOTSTRAP_ENABLED = "true"
+  # Set ENROLLMENT_TOKEN via secrets
 
 [http_service]
   internal_port = 9080
@@ -41,9 +42,9 @@ primary_region = "iad"
   destination = "/opt/ferentin/certs"
 
 [[mounts]]
-  source = "service_edge_policies"
-  destination = "/opt/ferentin/policies"
+  source = "service_edge_policy"
+  destination = "/opt/ferentin/policy"
 
 # Create volumes before first deploy:
 # fly volumes create service_edge_certs --size 1 --region iad
-# fly volumes create service_edge_policies --size 1 --region iad
+# fly volumes create service_edge_policy --size 1 --region iad

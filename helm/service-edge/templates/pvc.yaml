@@ -16,20 +16,20 @@ spec:
       storage: {{ .Values.persistence.certs.size }}
 {{- end }}
 ---
-{{- if .Values.persistence.policies.enabled }}
+{{- if .Values.persistence.policy.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "service-edge.fullname" . }}-policies
+  name: {{ include "service-edge.fullname" . }}-policy
   labels:
     {{- include "service-edge.labels" . | nindent 4 }}
 spec:
   accessModes:
-    - {{ .Values.persistence.policies.accessMode }}
-  {{- if .Values.persistence.policies.storageClass }}
-  storageClassName: {{ .Values.persistence.policies.storageClass | quote }}
+    - {{ .Values.persistence.policy.accessMode }}
+  {{- if .Values.persistence.policy.storageClass }}
+  storageClassName: {{ .Values.persistence.policy.storageClass | quote }}
   {{- end }}
   resources:
     requests:
-      storage: {{ .Values.persistence.policies.size }}
+      storage: {{ .Values.persistence.policy.size }}
 {{- end }}

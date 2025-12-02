@@ -17,7 +17,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: service-edge-policies-pvc
+  name: service-edge-policy-pvc
   namespace: ferentin-service-edge
   labels:
     app.kubernetes.io/name: service-edge
