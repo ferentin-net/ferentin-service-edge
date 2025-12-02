@@ -2,14 +2,22 @@
 
 Deploy Ferentin Service Edge to Kubernetes.
 
+## Prerequisites
+
+1. **Obtain an enrollment token** from the Ferentin admin console
+2. Kubernetes cluster with kubectl configured
+3. Storage class for persistent volumes
+
 ## Quick Start
 
 ```bash
 # Create namespace
 kubectl apply -f namespace.yaml
 
-# Create secrets (edit first!)
-kubectl apply -f secret.yaml
+# Create secrets with enrollment token
+kubectl create secret generic service-edge-secrets \
+  --from-literal=enrollment-token=your-enrollment-token-here \
+  -n ferentin-service-edge
 
 # Create config
 kubectl apply -f configmap.yaml
@@ -26,21 +34,24 @@ kubectl apply -f service.yaml
 
 ### 1. Edit Secrets
 
-Update `secret.yaml` with your edge credentials:
+Create the secret with your enrollment token:
 
-```yaml
-stringData:
-  edge-id: "your-edge-id"
-  tenant-id: "your-tenant-id"
+```bash
+kubectl create secret generic service-edge-secrets \
+  --from-literal=enrollment-token=your-enrollment-token-here \
+  -n ferentin-service-edge
 ```
 
-### 2. Edit ConfigMap
+### 2. Edit ConfigMap (Optional)
 
-Update `configmap.yaml` with your control plane URL:
+The `configmap.yaml` contains default settings:
 
 ```yaml
 data:
-  EDGE_CONTROL_PLANE_URL: "https://your-cp.example.com"
+  SPRING_PROFILES_ACTIVE: "aws-secure"
+  BOOTSTRAP_ENABLED: "true"
+  TLS_ENABLED: "true"
+  TLS_PORT: "9443"
 ```
 
 ### 3. Storage Class
@@ -51,6 +62,13 @@ Update `pvc.yaml` with your storage class:
 spec:
   storageClassName: your-storage-class
 ```
+
+## Ports
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 9080 | HTTP | API endpoints, health checks |
+| 9443 | HTTPS | TLS-encrypted API (enabled after certificate provisioning) |
 
 ## Verify Deployment
 
@@ -63,6 +81,10 @@ kubectl logs -f deployment/service-edge -n ferentin-service-edge
 
 # Check health
 kubectl exec -n ferentin-service-edge deployment/service-edge -- nc -z localhost 9080
+
+# Test API
+kubectl port-forward svc/service-edge 9080:9080 -n ferentin-service-edge
+curl http://localhost:9080/actuator/health
 ```
 
 ## Expose Service
@@ -73,8 +95,12 @@ kubectl exec -n ferentin-service-edge deployment/service-edge -- nc -z localhost
 spec:
   type: NodePort
   ports:
-    - port: 9080
+    - name: http
+      port: 9080
       nodePort: 30080
+    - name: https
+      port: 9443
+      nodePort: 30443
 ```
 
 ### LoadBalancer
@@ -106,6 +132,19 @@ spec:
                   number: 9080
 ```
 
+## After Enrollment
+
+Once enrolled successfully:
+
+1. The edge node receives its identity (EDGE_ID, TENANT_ID, SITE_ID)
+2. mTLS certificates are stored in the persistent volume
+3. The HTTPS listener starts on port 9443
+4. Policy bundles are downloaded
+
+You can optionally:
+- Remove the enrollment token from secrets
+- Set `BOOTSTRAP_ENABLED=false` in the ConfigMap
+
 ## Scaling
 
 ```bash
@@ -126,6 +165,15 @@ kubectl set image deployment/service-edge \
   service-edge=ghcr.io/ferentin-net/service-edge:1.0.1 \
   -n ferentin-service-edge
 ```
+
+## Re-enrollment
+
+If you need to re-enroll (e.g., certificates expired):
+
+1. Obtain a new enrollment token from admin console
+2. Update the secret with the new token
+3. Set `BOOTSTRAP_ENABLED=true` in ConfigMap
+4. Restart: `kubectl rollout restart deployment/service-edge -n ferentin-service-edge`
 
 ## Cleanup
 

@@ -85,6 +85,15 @@ The following volumes are created:
 
 Logs, data, and tmp directories use tmpfs (ephemeral).
 
+## Ports
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 9080 | HTTP | API endpoints, health checks |
+| 9443 | HTTPS | TLS-encrypted API (enabled after certificate provisioning) |
+
+The HTTPS listener on port 9443 activates automatically once server certificates are provisioned during bootstrap enrollment.
+
 ## Health Check
 
 ```bash

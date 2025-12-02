@@ -29,6 +29,15 @@ fly deploy
 
 ## Configuration
 
+## Ports
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 9080 | HTTP | API endpoints, health checks |
+| 9443 | HTTPS | TLS-encrypted API (enabled after certificate provisioning) |
+
+The HTTPS listener on port 9443 activates automatically once server certificates are provisioned during bootstrap enrollment.
+
 ### Environment Variables
 
 | Variable | Required | Description |
@@ -36,6 +45,8 @@ fly deploy
 | `SPRING_PROFILES_ACTIVE` | No | Spring profile (default: `aws-secure`) |
 | `BOOTSTRAP_ENABLED` | No | Enable bootstrap (default: `true`) |
 | `ENROLLMENT_TOKEN` | Yes | Enrollment token from admin console |
+| `TLS_ENABLED` | No | Enable HTTPS listener (default: `true`) |
+| `TLS_PORT` | No | HTTPS listener port (default: `9443`) |
 
 ### Secrets
 

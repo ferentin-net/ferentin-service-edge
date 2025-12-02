@@ -37,6 +37,15 @@ railway variables set ENROLLMENT_TOKEN=your-enrollment-token-here
 railway up
 ```
 
+## Ports
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 9080 | HTTP | API endpoints, health checks |
+| 9443 | HTTPS | TLS-encrypted API (enabled after certificate provisioning) |
+
+The HTTPS listener on port 9443 activates automatically once server certificates are provisioned during bootstrap enrollment.
+
 ## Environment Variables
 
 Configure in Railway dashboard or CLI:
@@ -46,6 +55,8 @@ Configure in Railway dashboard or CLI:
 | `SPRING_PROFILES_ACTIVE` | No | Spring profile (default: `aws-secure`) |
 | `BOOTSTRAP_ENABLED` | Yes | Set to `true` for first-time enrollment |
 | `ENROLLMENT_TOKEN` | Yes | Enrollment token from admin console |
+| `TLS_ENABLED` | No | Enable HTTPS listener (default: `true`) |
+| `TLS_PORT` | No | HTTPS listener port (default: `9443`) |
 
 ## Volumes
 
