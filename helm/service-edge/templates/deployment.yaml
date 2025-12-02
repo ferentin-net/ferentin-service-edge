@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "service-edge.fullname" . }}
+  labels:
+    {{- include "service-edge.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "service-edge.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "service-edge.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "service-edge.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 9080
+              protocol: TCP
+          env:
+            - name: EDGE_CONTROL_PLANE_URL
+              value: {{ .Values.config.controlPlaneUrl | quote }}
+            - name: EDGE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "service-edge.fullname" . }}-secrets
+                  key: edge-id
+            - name: EDGE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "service-edge.fullname" . }}-secrets
+                  key: tenant-id
+            {{- if .Values.config.siteId }}
+            - name: EDGE_SITE_ID
+              value: {{ .Values.config.siteId | quote }}
+            {{- end }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.config.springProfile | quote }}
+            - name: ENABLE_VIRTUAL_THREADS
+              value: {{ .Values.config.enableVirtualThreads | quote }}
+            {{- if .Values.config.javaOpts }}
+            - name: JAVA_OPTS
+              value: {{ .Values.config.javaOpts | quote }}
+            {{- end }}
+            {{- if .Values.config.caBundle }}
+            - name: EDGE_CA_BUNDLE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "service-edge.fullname" . }}-secrets
+                  key: ca-bundle
+            {{- end }}
+          volumeMounts:
+            - name: certs
+              mountPath: /opt/ferentin/certs
+            - name: policies
+              mountPath: /opt/ferentin/policies
+            - name: logs
+              mountPath: /opt/ferentin/logs
+            - name: data
+              mountPath: /opt/ferentin/data
+            - name: tmp
+              mountPath: /opt/ferentin/tmp
+          livenessProbe:
+            tcpSocket:
+              port: 9080
+            initialDelaySeconds: {{ .Values.healthCheck.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthCheck.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthCheck.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 9080
+            initialDelaySeconds: {{ .Values.healthCheck.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthCheck.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthCheck.readiness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        {{- if .Values.persistence.certs.enabled }}
+        - name: certs
+          persistentVolumeClaim:
+            claimName: {{ include "service-edge.fullname" . }}-certs
+        {{- else }}
+        - name: certs
+          emptyDir:
+            sizeLimit: {{ .Values.persistence.certs.size }}
+        {{- end }}
+        {{- if .Values.persistence.policies.enabled }}
+        - name: policies
+          persistentVolumeClaim:
+            claimName: {{ include "service-edge.fullname" . }}-policies
+        {{- else }}
+        - name: policies
+          emptyDir:
+            sizeLimit: {{ .Values.persistence.policies.size }}
+        {{- end }}
+        - name: logs
+          emptyDir:
+            sizeLimit: {{ .Values.ephemeralStorage.logs.sizeLimit }}
+        - name: data
+          emptyDir:
+            sizeLimit: {{ .Values.ephemeralStorage.data.sizeLimit }}
+        - name: tmp
+          emptyDir:
+            {{- if .Values.ephemeralStorage.tmp.medium }}
+            medium: {{ .Values.ephemeralStorage.tmp.medium }}
+            {{- end }}
+            sizeLimit: {{ .Values.ephemeralStorage.tmp.sizeLimit }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

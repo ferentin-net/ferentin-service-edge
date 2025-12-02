@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-edge
+  namespace: ferentin-service-edge
+  labels:
+    app.kubernetes.io/name: service-edge
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: service-edge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: service-edge
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+
+      containers:
+        - name: service-edge
+          image: ghcr.io/ferentin-net/service-edge:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 9080
+              protocol: TCP
+
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          envFrom:
+            - configMapRef:
+                name: service-edge-config
+
+          env:
+            - name: EDGE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: service-edge-secrets
+                  key: edge-id
+            - name: EDGE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: service-edge-secrets
+                  key: tenant-id
+
+          volumeMounts:
+            - name: certs
+              mountPath: /opt/ferentin/certs
+            - name: policies
+              mountPath: /opt/ferentin/policies
+            - name: logs
+              mountPath: /opt/ferentin/logs
+            - name: data
+              mountPath: /opt/ferentin/data
+            - name: tmp
+              mountPath: /opt/ferentin/tmp
+
+          livenessProbe:
+            tcpSocket:
+              port: 9080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 9080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+      volumes:
+        # Persistent volumes for certs and policies
+        - name: certs
+          persistentVolumeClaim:
+            claimName: service-edge-certs-pvc
+        - name: policies
+          persistentVolumeClaim:
+            claimName: service-edge-policies-pvc
+        # Ephemeral volumes for logs, data, tmp
+        - name: logs
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: data
+          emptyDir:
+            sizeLimit: 50Mi
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 100Mi

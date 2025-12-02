@@ -1,0 +1,28 @@
+# Render Blueprint for Ferentin Service Edge
+# See: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: service-edge
+    env: docker
+    dockerfilePath: null
+    # Use pre-built image
+    image:
+      url: ghcr.io/ferentin-net/service-edge:latest
+    healthCheckPath: /actuator/health
+    plan: starter
+    envVars:
+      - key: EDGE_CONTROL_PLANE_URL
+        value: https://cp.example.com
+      - key: EDGE_ID
+        sync: false  # Set in dashboard
+      - key: EDGE_TENANT_ID
+        sync: false  # Set in dashboard
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+    # Render supports one disk per service
+    # Mount to parent and use subdirectories
+    disk:
+      name: service-edge-storage
+      mountPath: /opt/ferentin/storage
+      sizeGB: 2

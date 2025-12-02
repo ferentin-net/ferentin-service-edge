@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-edge
+  namespace: ferentin-service-edge
+  labels:
+    app.kubernetes.io/name: service-edge
+    app.kubernetes.io/component: gateway
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9080
+      targetPort: 9080
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: service-edge

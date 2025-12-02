@@ -1,0 +1,122 @@
+# Default values for service-edge
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/ferentin-net/service-edge
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Service Edge configuration
+config:
+  # Required: Control plane URL
+  controlPlaneUrl: "https://cp.example.com"
+  # Required: Edge node ID
+  edgeId: ""
+  # Required: Tenant ID
+  tenantId: ""
+  # Optional: Site ID for multi-site deployments
+  siteId: ""
+  # Spring profile
+  springProfile: "production"
+  # Enable virtual threads
+  enableVirtualThreads: false
+  # Custom JVM options
+  javaOpts: ""
+  # Custom CA bundle (PEM format)
+  caBundle: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+
+securityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 9080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: edge.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+# Persistent storage
+persistence:
+  certs:
+    enabled: true
+    size: 100Mi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+  policies:
+    enabled: true
+    size: 100Mi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+# Ephemeral storage limits
+ephemeralStorage:
+  logs:
+    sizeLimit: 100Mi
+  data:
+    sizeLimit: 50Mi
+  tmp:
+    sizeLimit: 100Mi
+    medium: Memory
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Health check configuration
+healthCheck:
+  liveness:
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3

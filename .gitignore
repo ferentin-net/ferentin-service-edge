@@ -1,0 +1,61 @@
+# Environment files with secrets
+.env
+*.env.local
+*.env.*.local
+
+# IDE and editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# Helm
+helm/*/charts/
+*.tgz
+
+# Kubernetes secrets (local testing)
+*-secret.yaml.local
+*.secret.yaml
+
+# Terraform (if used for infrastructure)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# Logs
+*.log
+logs/
+
+# Certificates and keys (never commit these)
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+*.keystore
+*.truststore
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Claude Code
+.claude/

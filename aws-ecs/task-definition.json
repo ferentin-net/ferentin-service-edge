@@ -1,0 +1,116 @@
+{
+  "family": "service-edge",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/serviceEdgeTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "service-edge",
+      "image": "ghcr.io/ferentin-net/service-edge:latest",
+      "essential": true,
+      "readonlyRootFilesystem": true,
+      "user": "1000:1000",
+      "portMappings": [
+        {
+          "containerPort": 9080,
+          "protocol": "tcp"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "certs",
+          "containerPath": "/opt/ferentin/certs"
+        },
+        {
+          "sourceVolume": "policies",
+          "containerPath": "/opt/ferentin/policies"
+        },
+        {
+          "sourceVolume": "logs",
+          "containerPath": "/opt/ferentin/logs"
+        },
+        {
+          "sourceVolume": "data",
+          "containerPath": "/opt/ferentin/data"
+        },
+        {
+          "sourceVolume": "tmp",
+          "containerPath": "/opt/ferentin/tmp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "EDGE_CONTROL_PLANE_URL",
+          "value": "https://cp.example.com"
+        },
+        {
+          "name": "SPRING_PROFILES_ACTIVE",
+          "value": "aws-secure"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "EDGE_ID",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/service-edge/id"
+        },
+        {
+          "name": "EDGE_TENANT_ID",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/service-edge/tenant-id"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD", "nc", "-z", "localhost", "9080"],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/service-edge",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "edge"
+        }
+      },
+      "linuxParameters": {
+        "capabilities": {
+          "drop": ["ALL"]
+        }
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "certs",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "fs-xxxxxxxx",
+        "rootDirectory": "/service-edge/certs",
+        "transitEncryption": "ENABLED"
+      }
+    },
+    {
+      "name": "policies",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "fs-xxxxxxxx",
+        "rootDirectory": "/service-edge/policies",
+        "transitEncryption": "ENABLED"
+      }
+    },
+    {
+      "name": "logs",
+      "host": {}
+    },
+    {
+      "name": "data",
+      "host": {}
+    },
+    {
+      "name": "tmp",
+      "host": {}
+    }
+  ]
+}
