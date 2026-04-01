@@ -37,7 +37,7 @@ The Service Edge image is hardened with:
 
 ### 1. Get an Enrollment Token
 
-1. Log into the [Ferentin Admin Console](https://console.ferentin.net)
+1. Log into the [Ferentin Admin Console](https://admin.ferentin.net)
 2. Navigate to **Edge Nodes** > **Add Edge Node**
 3. Copy the enrollment token
 
