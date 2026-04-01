@@ -1,0 +1,21 @@
+apiVersion: v2
+name: service-edge
+description: Ferentin Service Edge - Combined edge-agent and edge-runtime for LLM gateway
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - ferentin
+  - edge
+  - llm
+  - gateway
+  - ai
+
+home: https://github.com/ferentin-net/ferentin-service-edge
+sources:
+  - https://github.com/ferentin-net/ferentin-platform
+
+maintainers:
+  - name: Ferentin
+    url: https://ferentin.com

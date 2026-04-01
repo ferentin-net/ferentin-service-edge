@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  service-edge:
+    # Pin SERVICE_EDGE_VERSION to a specific release in .env
+    image: ghcr.io/ferentin-net/service-edge:${SERVICE_EDGE_VERSION:?SERVICE_EDGE_VERSION is required - see https://github.com/ferentin-net/service-edge/releases}
+    container_name: ferentin-service-edge
+    restart: unless-stopped
+    read_only: true
+
+    # Persistent volumes for certs and policy
+    volumes:
+      - service-edge-certs:/opt/ferentin/certs:rw
+      - service-edge-policy:/opt/ferentin/policy:rw
+
+    # Ephemeral tmpfs for logs, data, tmp (with uid/gid for non-root user)
+    tmpfs:
+      - /opt/ferentin/logs:rw,uid=1000,gid=1000,noexec,nosuid,size=100m
+      - /opt/ferentin/data:rw,uid=1000,gid=1000,noexec,nosuid,size=50m
+      - /opt/ferentin/tmp:rw,uid=1000,gid=1000,noexec,nosuid,size=100m
+
+    ports:
+      - "9443:9443"   # HTTPS (TLS) - primary API port for LLM traffic
+      # Port 9080 is internal-only (health checks). Not published externally.
+
+    environment:
+      # Bootstrap enrollment (for first-time setup)
+      # After enrollment, certificates are stored in persistent volume
+      - BOOTSTRAP_ENABLED=${BOOTSTRAP_ENABLED:-true}
+      - ENROLLMENT_TOKEN=${ENROLLMENT_TOKEN:-}
+      # Private key encryption passphrase (REQUIRED, minimum 32 characters)
+      # Generate with: openssl rand -base64 48
+      - FERENTIN_KEY_PASSPHRASE=${FERENTIN_KEY_PASSPHRASE:?FERENTIN_KEY_PASSPHRASE is required - generate with: openssl rand -base64 48}
+      # Spring profile determines control plane URL:
+      # - aws-secure: https://cp.ferentin.net (production)
+      # - nginx: https://cp.local.ferentin.test (local development)
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-aws-secure}
+      - JAVA_OPTS=${JAVA_OPTS:-}
+      - ENABLE_VIRTUAL_THREADS=${ENABLE_VIRTUAL_THREADS:-false}
+      - EDGE_CA_BUNDLE=${EDGE_CA_BUNDLE:-}
+      # TLS Listener Configuration
+      - TLS_ENABLED=${TLS_ENABLED:-true}
+      - TLS_PORT=${TLS_PORT:-9443}
+
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    # Health check (primary on HTTP port; TLS port optional)
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+volumes:
+  service-edge-certs:
+    driver: local
+  service-edge-policy:
+    driver: local
+
+networks:
+  default:
+    name: ferentin-service-edge

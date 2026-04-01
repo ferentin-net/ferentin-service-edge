@@ -1,0 +1,132 @@
+# Default values for service-edge
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/ferentin-net/service-edge
+  pullPolicy: IfNotPresent
+  # Pin to a specific version — see https://github.com/ferentin-net/service-edge/releases
+  tag: "1.0.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Service Edge configuration
+config:
+  # Spring profile (determines control plane URL)
+  # - aws-secure: Production (https://cp.ferentin.net)
+  # - nginx: Local development (https://cp.local.ferentin.test)
+  springProfile: "aws-secure"
+
+  # Bootstrap configuration (for first-time enrollment)
+  bootstrap:
+    enabled: true
+    force: false
+    # Enrollment token from admin console
+    enrollmentToken: ""
+
+  # Enable virtual threads
+  enableVirtualThreads: false
+  # Custom JVM options
+  javaOpts: ""
+  # Custom CA bundle (PEM format)
+  caBundle: ""
+
+  # TLS Listener Configuration
+  # Enables HTTPS listener on port 9443 (requires server.crt and server.key in /opt/ferentin/certs)
+  tls:
+    enabled: true
+    port: 9443
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+
+securityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 9443
+  # Port 9080 is internal-only (health checks). Not exposed via Service.
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: edge.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+# Persistent storage
+persistence:
+  certs:
+    enabled: true
+    size: 100Mi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+  policy:
+    enabled: true
+    size: 100Mi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+# Ephemeral storage limits
+ephemeralStorage:
+  logs:
+    sizeLimit: 100Mi
+  data:
+    sizeLimit: 50Mi
+  tmp:
+    sizeLimit: 100Mi
+    medium: Memory
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Health check configuration
+healthCheck:
+  liveness:
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3

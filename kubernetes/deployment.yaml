@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-edge
+  namespace: ferentin-service-edge
+  labels:
+    app.kubernetes.io/name: service-edge
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: service-edge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: service-edge
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+
+      containers:
+        - name: service-edge
+          image: ghcr.io/ferentin-net/service-edge:1.0.0  # Pin to a specific version
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: https
+              containerPort: 9443
+              protocol: TCP
+            # Port 9080 is internal-only (health checks, not exposed via Service)
+
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          envFrom:
+            - configMapRef:
+                name: service-edge-config
+
+          env:
+            # Enrollment token from secret (for first-time setup)
+            - name: ENROLLMENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: service-edge-secrets
+                  key: enrollment-token
+            # Private key encryption passphrase (REQUIRED, min 32 chars)
+            # Generate: openssl rand -base64 48
+            - name: FERENTIN_KEY_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: service-edge-secrets
+                  key: key-passphrase
+            # TLS Listener Configuration
+            - name: TLS_ENABLED
+              value: "true"
+            - name: TLS_PORT
+              value: "9443"
+
+          volumeMounts:
+            - name: certs
+              mountPath: /opt/ferentin/certs
+            - name: policy
+              mountPath: /opt/ferentin/policy
+            - name: logs
+              mountPath: /opt/ferentin/logs
+            - name: data
+              mountPath: /opt/ferentin/data
+            - name: tmp
+              mountPath: /opt/ferentin/tmp
+
+          livenessProbe:
+            tcpSocket:
+              port: 9080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 9080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+      volumes:
+        # Persistent volumes for certs and policy
+        - name: certs
+          persistentVolumeClaim:
+            claimName: service-edge-certs-pvc
+        - name: policy
+          persistentVolumeClaim:
+            claimName: service-edge-policy-pvc
+        # Ephemeral volumes for logs, data, tmp
+        - name: logs
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: data
+          emptyDir:
+            sizeLimit: 50Mi
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 100Mi

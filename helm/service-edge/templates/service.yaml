@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "service-edge.fullname" . }}
+  labels:
+    {{- include "service-edge.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: https
+      protocol: TCP
+      name: https
+    # Port 9080 is internal-only (health checks). Not exposed via Service.
+  selector:
+    {{- include "service-edge.selectorLabels" . | nindent 4 }}

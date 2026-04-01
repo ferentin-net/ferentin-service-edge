@@ -1,0 +1,35 @@
+# Render Blueprint for Ferentin Service Edge
+# See: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: service-edge
+    env: docker
+    dockerfilePath: null
+    # Use pre-built image
+    image:
+      url: ghcr.io/ferentin-net/service-edge:1.0.0  # Pin to a specific version
+    healthCheckPath: /actuator/health
+    plan: starter
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: aws-secure
+      - key: BOOTSTRAP_ENABLED
+        value: "true"
+      - key: ENROLLMENT_TOKEN
+        sync: false  # Set in dashboard
+      - key: FERENTIN_KEY_PASSPHRASE
+        sync: false  # Set in dashboard (min 32 chars, generate: openssl rand -base64 48)
+      - key: TLS_ENABLED
+        value: "true"
+      - key: TLS_PORT
+        value: "9443"
+      # Render terminates TLS at their proxy — disable port filtering
+      - key: TLS_PORT_FILTERING_ENABLED
+        value: "false"
+    # Render supports one disk per service
+    # Mount to parent and use subdirectories
+    disk:
+      name: service-edge-storage
+      mountPath: /opt/ferentin/storage
+      sizeGB: 2
