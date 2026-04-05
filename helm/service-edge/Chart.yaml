@@ -3,7 +3,7 @@ name: service-edge
 description: Ferentin Service Edge - Combined edge-agent and edge-runtime for LLM gateway
 type: application
 version: 0.1.0
-appVersion: "0.1.0"
+appVersion: "0.1.1"
 
 keywords:
   - ferentin
