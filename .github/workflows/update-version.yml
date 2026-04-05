@@ -1,0 +1,65 @@
+name: Update Service Edge Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version (e.g., 0.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Update version references
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          echo "Updating all version references to ${VERSION}"
+
+          # Files with image tags (ghcr.io/ferentin-net/service-edge:X.Y.Z)
+          sed -i "s|ghcr\.io/ferentin-net/service-edge:[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*[^\"' ]*|ghcr.io/ferentin-net/service-edge:${VERSION}|g" \
+            README.md \
+            aws-ecs/task-definition.json \
+            fly.io/fly.toml \
+            kubernetes/deployment.yaml \
+            render/render.yaml
+
+          # Helm values.yaml — tag field
+          sed -i "s|tag: \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*[^\"]*\"|tag: \"${VERSION}\"|g" \
+            helm/service-edge/values.yaml
+
+          # Helm Chart.yaml — appVersion
+          sed -i "s|appVersion: \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*[^\"]*\"|appVersion: \"${VERSION}\"|g" \
+            helm/service-edge/Chart.yaml
+
+          # Docker Compose .env.example and README
+          sed -i "s|SERVICE_EDGE_VERSION=[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*[^ ]*|SERVICE_EDGE_VERSION=${VERSION}|g" \
+            docker-compose/.env.example \
+            docker-compose/README.md
+
+          echo "Updated files:"
+          git diff --name-only
+
+      - name: Commit and push
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "No changes detected — version may already be ${VERSION}"
+            exit 0
+          fi
+
+          git add -A
+          git commit -m "chore: update service-edge image to v${VERSION}"
+          git push

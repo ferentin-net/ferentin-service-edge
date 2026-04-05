@@ -8,7 +8,7 @@ services:
     dockerfilePath: null
     # Use pre-built image
     image:
-      url: ghcr.io/ferentin-net/service-edge:1.0.0  # Pin to a specific version
+      url: ghcr.io/ferentin-net/service-edge:0.1.0  # Pin to a specific version
     healthCheckPath: /actuator/health
     plan: starter
     envVars:
