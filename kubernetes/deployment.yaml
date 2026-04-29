@@ -24,7 +24,7 @@ spec:
 
       containers:
         - name: service-edge
-          image: ghcr.io/ferentin-net/service-edge:0.2.0  # Pin to a specific version
+          image: ghcr.io/ferentin-net/service-edge:0.2.1  # Pin to a specific version
           imagePullPolicy: IfNotPresent
           ports:
             - name: https

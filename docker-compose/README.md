@@ -52,7 +52,7 @@ SPRING_PROFILES_ACTIVE=aws-secure
 
 # Required: Image version — pin to a specific release
 # See https://github.com/ferentin-net/service-edge/releases
-SERVICE_EDGE_VERSION=0.2.0
+SERVICE_EDGE_VERSION=0.2.1
 ```
 
 ## Enrollment Process
