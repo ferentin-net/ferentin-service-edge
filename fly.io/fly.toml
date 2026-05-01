@@ -5,7 +5,7 @@ app = "ferentin-service-edge"
 primary_region = "iad"
 
 [build]
-  image = "ghcr.io/ferentin-net/service-edge:0.2.1"  # Pin to a specific version
+  image = "ghcr.io/ferentin-net/service-edge:0.2.5"  # Pin to a specific version
 
 [env]
   SPRING_PROFILES_ACTIVE = "aws-secure"
