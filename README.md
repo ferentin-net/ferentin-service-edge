@@ -69,7 +69,7 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=aws-secure \
   --security-opt no-new-privileges:true \
   --cap-drop ALL \
-  ghcr.io/ferentin-net/service-edge:0.3.3  # Pin to a specific version
+  ghcr.io/ferentin-net/service-edge:0.3.4  # Pin to a specific version
 ```
 
 ### 3. Verify Enrollment
