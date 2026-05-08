@@ -89,7 +89,7 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=aws-secure \
   --security-opt no-new-privileges:true \
   --cap-drop ALL \
-  ghcr.io/ferentin-net/service-edge:0.4.0
+  ghcr.io/ferentin-net/service-edge:0.4.1
 ```
 
 > **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID` as environment variables.** They're derived from the enrollment token's JWT claims (`tid`, `site_id`, `edge_id`, `edge_type`). Any env var that disagrees with the token aborts startup.
@@ -148,7 +148,7 @@ Browse all published versions on the [GHCR package page](https://github.com/orgs
 Images are signed with [cosign](https://github.com/sigstore/cosign) using GitHub's OIDC keyless flow:
 
 ```bash
-cosign verify ghcr.io/ferentin-net/service-edge:0.4.0 \
+cosign verify ghcr.io/ferentin-net/service-edge:0.4.1 \
   --certificate-identity-regexp 'https://github.com/ferentin-net/ferentin-platform/.+' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
