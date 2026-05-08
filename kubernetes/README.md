@@ -162,7 +162,7 @@ kubectl apply -f deployment.yaml
 
 # Or use set image:
 kubectl set image deployment/service-edge \
-  service-edge=ghcr.io/ferentin-net/service-edge:1.0.1 \
+  service-edge=ghcr.io/ferentin-net/service-edge:0.4.1 \
   -n ferentin-service-edge
 ```
 
