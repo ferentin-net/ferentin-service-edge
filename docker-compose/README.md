@@ -53,7 +53,7 @@ SPRING_PROFILES_ACTIVE=aws-secure
 
 # Required: Image version — pin to a specific release
 # See https://github.com/ferentin-net/service-edge/releases
-SERVICE_EDGE_VERSION=0.4.1
+SERVICE_EDGE_VERSION=0.4.2
 ```
 
 > **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID`.** They're derived from the enrollment token's JWT claims at bootstrap. Any env var that disagrees with the token aborts startup.
