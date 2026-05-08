@@ -29,7 +29,7 @@ spec:
 
       containers:
         - name: service-edge
-          image: ghcr.io/ferentin-net/service-edge:0.4.2
+          image: ghcr.io/ferentin-net/service-edge:0.4.4
           imagePullPolicy: IfNotPresent
           ports:
             - name: https
