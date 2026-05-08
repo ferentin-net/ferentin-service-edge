@@ -9,13 +9,15 @@ primary_region = "iad"
 
 [env]
   SPRING_PROFILES_ACTIVE = "aws-secure"
-  BOOTSTRAP_ENABLED = "true"
   TLS_ENABLED = "true"
   TLS_PORT = "9443"
   # Fly.io terminates TLS at the proxy — disable port filtering so API traffic
   # reaches the container on port 9080 (Fly forwards plaintext internally).
   TLS_PORT_FILTERING_ENABLED = "false"
-  # Set via `fly secrets set`:
+  # Bootstrap auto-triggers when ENROLLMENT_TOKEN is set and no certs are on the
+  # mounted volume. Tenant / site / edge identity is derived from the JWT claims
+  # — don't set TENANT_ID / SITE_ID / EDGE_ID here.
+  # Set secrets via `fly secrets set`:
   #   fly secrets set ENROLLMENT_TOKEN=<token>
   #   fly secrets set FERENTIN_KEY_PASSPHRASE=$(openssl rand -base64 48)
 

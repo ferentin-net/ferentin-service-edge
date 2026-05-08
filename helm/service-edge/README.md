@@ -39,15 +39,30 @@ helm install service-edge ./service-edge \
 
 The HTTPS listener on port 9443 activates automatically once server certificates are provisioned during bootstrap enrollment.
 
+## What this exposes
+
+Once enrolled, the Service Edge serves both LLM and MCP traffic on port **9443** (HTTPS). What's active depends on the enrollment token's `capabilities` claim:
+
+| Capability | Endpoints |
+|---|---|
+| **LLM Proxy** | `/v1/chat/completions`, `/v1/messages`, `/v1/models`, `/v1/embeddings` |
+| **MCP Gateway** | `/v1/mcp/{server-slug}` (Streamable HTTP, [2025-11-25 spec](https://modelcontextprotocol.io/specification/2025-11-25)), `/.well-known/oauth-protected-resource/v1/mcp` |
+
+The MCP Gateway proxies tool calls to upstream MCP servers (private, customer-network MCP servers and/or SaaS / cloud-hosted MCP servers) with tenant-scoped policy enforcement and per-tool audit logging.
+
 ## Configuration
 
 ### Bootstrap Configuration
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `bootstrap.enabled` | `true` | Enable bootstrap enrollment |
-| `bootstrap.existingSecret` | `""` | Name of secret containing ENROLLMENT_TOKEN |
-| `config.springProfile` | `aws-secure` | Spring profile |
+| `config.bootstrap.enabled` | `true` | Kill-switch only. Set to `false` to suppress bootstrap entirely. Bootstrap auto-triggers when `ENROLLMENT_TOKEN` is present and no certs are on the cert PVC — no need to flip this in normal use. |
+| `config.bootstrap.force` | `false` | Force re-enrollment even when valid certs exist on the cert PVC. Used during recovery scenarios. |
+| `config.bootstrap.enrollmentToken` | `""` | Inline token. Prefer `bootstrap.existingSecret` in production. |
+| `bootstrap.existingSecret` | `""` | Name of secret containing `ENROLLMENT_TOKEN` and `key-passphrase`. |
+| `config.springProfile` | `aws-secure` | Spring profile (`aws-secure` for prod, `nginx` for local dev). |
+
+> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID`.** Tenant / site / edge identity is derived from the JWT claims (`tid`, `site_id`, `edge_id`, `edge_type`) at bootstrap; a mismatch with the token aborts startup.
 
 ### TLS Configuration
 
@@ -61,8 +76,8 @@ The HTTPS listener on port 9443 activates automatically once server certificates
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `image.repository` | `ghcr.io/ferentin-net/service-edge` | Image repository |
-| `image.tag` | `latest` | Image tag |
-| `image.pullPolicy` | `Always` | Pull policy |
+| `image.tag` | `0.4.0` | Image tag — pin to a specific release; see [versions](https://github.com/orgs/ferentin-net/packages/container/package/service-edge) |
+| `image.pullPolicy` | `IfNotPresent` | Pull policy |
 
 ### Resources
 
@@ -174,10 +189,10 @@ helm install service-edge ./service-edge -f my-values.yaml
 ## After Enrollment
 
 Once enrolled, the Service Edge:
-- Receives mTLS certificates (stored in certs PVC)
-- Downloads policy bundles (stored in policies PVC)
-- Activates HTTPS listener on port 9443
-- Begins accepting LLM API requests
+- Receives mTLS client cert + HTTPS server cert (Ferentin-CA-signed, stored in certs PVC)
+- Downloads the policy bundle (stored in policies PVC)
+- Binds the HTTPS listener on port 9443 (binds **after** bootstrap completes — confirm with the log line below)
+- Begins accepting LLM and MCP API requests
 
 Verify enrollment:
 
@@ -185,15 +200,14 @@ Verify enrollment:
 # Check pod status
 kubectl get pods -l app.kubernetes.io/name=service-edge
 
-# Check logs
-kubectl logs -l app.kubernetes.io/name=service-edge
+# Confirm the TLS listener bound — look for the bind log line
+kubectl logs -l app.kubernetes.io/name=service-edge | grep TlsListenerService
+# Expected: "TLS HTTPS listener bound on port 9443 (reason: certificates-available)"
 
-# Test health endpoint
-kubectl port-forward svc/service-edge 9080:9080
-curl http://localhost:9080/actuator/health
-
-# Test LLM API (after enrollment completes)
-curl http://localhost:9080/v1/models
+# Test the TLS listener (port-forward 9443; --cacert points at the Ferentin
+# tenant CA bundle exported from the admin console)
+kubectl port-forward svc/service-edge 9443:9443
+curl --cacert ferentin-ca.pem https://localhost:9443/v1/models
 ```
 
 ## Re-enrollment
@@ -244,9 +258,15 @@ Check the enrollment token is valid and not expired:
 kubectl logs -l app.kubernetes.io/name=service-edge
 ```
 
-### HTTPS not working
+### HTTPS not working / `Connection reset by peer` on 9443
 
-The TLS listener requires server certificates in the certs PVC. These are automatically provisioned during bootstrap enrollment. Check enrollment completed successfully.
+The TLS listener binds **after** bootstrap completes — on a fresh enrollment, expect a few seconds between pod start and the listener coming up. Tail the logs:
+
+```bash
+kubectl logs -l app.kubernetes.io/name=service-edge | grep TlsListenerService
+```
+
+Look for `TLS HTTPS listener bound on port 9443 (reason: certificates-available)` (cold-start) or `(reason: application-ready)` (warm restart). If you see `TLS listener will bind once certificates are provisioned` and nothing after, bootstrap hasn't completed — check `EdgeBootstrapClientImpl` logs for the underlying error (network reachability to control plane, invalid `key-passphrase`, expired token).
 
 ### Health check failing
 

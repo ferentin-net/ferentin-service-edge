@@ -41,8 +41,13 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: {{ .Values.config.springProfile | quote }}
+            {{- if not .Values.config.bootstrap.enabled }}
+            # Kill-switch — only emit BOOTSTRAP_ENABLED when explicitly disabled.
+            # Bootstrap auto-triggers when ENROLLMENT_TOKEN is present and no
+            # certs are on the cert PVC; no need to set this in normal use.
             - name: BOOTSTRAP_ENABLED
-              value: {{ .Values.config.bootstrap.enabled | quote }}
+              value: "false"
+            {{- end }}
             {{- if .Values.config.bootstrap.force }}
             - name: BOOTSTRAP_FORCE
               value: {{ .Values.config.bootstrap.force | quote }}

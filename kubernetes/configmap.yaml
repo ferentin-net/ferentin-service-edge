@@ -12,14 +12,15 @@ data:
   # - nginx: Local development (https://cp.local.ferentin.test)
   SPRING_PROFILES_ACTIVE: "aws-secure"
 
-  # Bootstrap configuration
-  # Set to "true" for first-time enrollment
-  BOOTSTRAP_ENABLED: "true"
-
   # Optional: Enable virtual threads
   ENABLE_VIRTUAL_THREADS: "false"
 
   # TLS Listener Configuration
-  # Enables HTTPS listener on port 9443 (requires server.crt and server.key in /opt/ferentin/certs)
+  # Enables HTTPS listener on port 9443 (requires server.crt and server.key in /opt/ferentin/certs).
+  # The listener binds AFTER bootstrap completes — see TlsListenerService logs for confirmation.
   TLS_ENABLED: "true"
   TLS_PORT: "9443"
+  # Tenant/site/edge identity is derived from the JWT claims at bootstrap.
+  # Don't set TENANT_ID, SITE_ID, or EDGE_ID — mismatches with the token abort startup.
+  # BOOTSTRAP_ENABLED is a kill-switch only; bootstrap auto-triggers when ENROLLMENT_TOKEN
+  # is present and no certs are on the cert PVC.

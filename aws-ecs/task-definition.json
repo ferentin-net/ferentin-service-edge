@@ -48,10 +48,6 @@
           "value": "aws-secure"
         },
         {
-          "name": "BOOTSTRAP_ENABLED",
-          "value": "true"
-        },
-        {
           "name": "TLS_ENABLED",
           "value": "true"
         },

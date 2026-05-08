@@ -19,11 +19,20 @@ config:
   # - nginx: Local development (https://cp.local.ferentin.test)
   springProfile: "aws-secure"
 
-  # Bootstrap configuration (for first-time enrollment)
+  # Bootstrap configuration.
+  # Bootstrap auto-triggers when enrollmentToken (or its existingSecret) is set
+  # and no certs are on the cert PVC. After enrollment the token is harmless
+  # (the runner short-circuits on valid certs); you can leave it or remove it.
   bootstrap:
+    # Kill-switch only — set to false to suppress bootstrap entirely (e.g., a
+    # debugging deployment that should never enroll). Operators should not flip
+    # this in normal use.
     enabled: true
+    # Force re-enrollment even when valid certs exist on the cert PVC. Used
+    # during recovery scenarios. Remove after successful re-enrollment.
     force: false
-    # Enrollment token from admin console
+    # Enrollment token (single-use, 15-min TTL). Prefer existingSecret in
+    # production over inlining the token here.
     enrollmentToken: ""
 
   # Enable virtual threads

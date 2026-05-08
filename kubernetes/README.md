@@ -49,10 +49,11 @@ The `configmap.yaml` contains default settings:
 ```yaml
 data:
   SPRING_PROFILES_ACTIVE: "aws-secure"
-  BOOTSTRAP_ENABLED: "true"
   TLS_ENABLED: "true"
   TLS_PORT: "9443"
 ```
+
+> Don't add `TENANT_ID`, `SITE_ID`, `EDGE_ID`, or `BOOTSTRAP_ENABLED` to the ConfigMap. Tenant / site / edge identity is derived from the JWT claims in the enrollment token (`tid`, `site_id`, `edge_id`, `edge_type`); a mismatch aborts startup. `BOOTSTRAP_ENABLED` is a kill-switch only — bootstrap auto-triggers when `ENROLLMENT_TOKEN` is present and no certs are on the cert PVC.
 
 ### 3. Storage Class
 
@@ -63,12 +64,34 @@ spec:
   storageClassName: your-storage-class
 ```
 
+## API endpoints exposed
+
+Once enrolled, the Service Edge exposes both LLM and MCP traffic on port **9443** (HTTPS). What's active depends on the enrollment token's `capabilities` claim.
+
+### LLM Proxy
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/v1/chat/completions` | POST | OpenAI-compatible chat completions |
+| `/v1/messages` | POST | Anthropic-compatible Messages API |
+| `/v1/models` | GET | List available models |
+| `/v1/embeddings` | POST | Embeddings API |
+
+### MCP Gateway
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/v1/mcp/{server-slug}` | POST | MCP JSON-RPC 2.0 endpoint (Streamable HTTP transport, [2025-11-25 spec](https://modelcontextprotocol.io/specification/2025-11-25)) |
+| `/.well-known/oauth-protected-resource/v1/mcp` | GET | OAuth2 Protected Resource Metadata ([RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)) |
+
+`{server-slug}` is the slug of an upstream MCP server (e.g., `github`, `slack`, `stripe`) configured in the tenant's policy bundle. Each MCP request is authorized against the tenant's policy and audited per tool call.
+
 ## Ports
 
 | Port | Protocol | Purpose |
 |------|----------|---------|
-| 9080 | HTTP | API endpoints, health checks |
-| 9443 | HTTPS | TLS-encrypted API (enabled after certificate provisioning) |
+| 9443 | HTTPS | LLM + MCP API (primary). Binds **after** bootstrap completes. |
+| 9080 | HTTP | Health checks and actuator only. Binds at startup; LLM/MCP endpoints are blocked here. |
 
 ## Verify Deployment
 
@@ -136,14 +159,12 @@ spec:
 
 Once enrolled successfully:
 
-1. The edge node receives its identity (EDGE_ID, TENANT_ID, SITE_ID)
-2. mTLS certificates are stored in the persistent volume
-3. The HTTPS listener starts on port 9443
-4. Policy bundles are downloaded
+1. mTLS client cert + HTTPS server cert (both Ferentin-CA-signed) are stored in the cert PVC.
+2. Edge config (tenant ID, site ID, edge ID, edge type — all from JWT claims) is persisted.
+3. The HTTPS listener binds on port 9443 — confirm with `kubectl logs -l app.kubernetes.io/name=service-edge | grep TlsListenerService` (look for `TLS HTTPS listener bound on port 9443`).
+4. Policy bundle is downloaded to the policy PVC.
 
-You can optionally:
-- Remove the enrollment token from secrets
-- Set `BOOTSTRAP_ENABLED=false` in the ConfigMap
+You can leave the enrollment-token secret in place (it's a no-op on warm restart) or delete it.
 
 ## Scaling
 
@@ -168,12 +189,13 @@ kubectl set image deployment/service-edge \
 
 ## Re-enrollment
 
-If you need to re-enroll (e.g., certificates expired):
+If you need to re-enroll (e.g., certificates expired or revoked):
 
 1. Obtain a new enrollment token from admin console
-2. Update the secret with the new token
-3. Set `BOOTSTRAP_ENABLED=true` in ConfigMap
+2. Update the secret with the new token: `kubectl create secret generic service-edge-secrets --from-literal=enrollment-token=<new> --dry-run=client -o yaml | kubectl apply -f -`
+3. Add `BOOTSTRAP_FORCE=true` to the ConfigMap (or pod env) to bypass the on-disk-cert short-circuit
 4. Restart: `kubectl rollout restart deployment/service-edge -n ferentin-service-edge`
+5. After successful re-enrollment, remove `BOOTSTRAP_FORCE` from the ConfigMap and roll again
 
 ## Cleanup
 

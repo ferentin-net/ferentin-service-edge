@@ -24,9 +24,8 @@ services:
       # Port 9080 is internal-only (health checks). Not published externally.
 
     environment:
-      # Bootstrap enrollment (for first-time setup)
-      # After enrollment, certificates are stored in persistent volume
-      - BOOTSTRAP_ENABLED=${BOOTSTRAP_ENABLED:-true}
+      # Enrollment token — bootstrap auto-triggers on first run when this is
+      # set and no certs are on the persistent volume; ignored on warm restart.
       - ENROLLMENT_TOKEN=${ENROLLMENT_TOKEN:-}
       # Private key encryption passphrase (REQUIRED, minimum 32 characters)
       # Generate with: openssl rand -base64 48

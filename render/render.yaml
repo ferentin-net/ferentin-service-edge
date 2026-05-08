@@ -14,10 +14,8 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: aws-secure
-      - key: BOOTSTRAP_ENABLED
-        value: "true"
       - key: ENROLLMENT_TOKEN
-        sync: false  # Set in dashboard
+        sync: false  # Set in dashboard. Bootstrap auto-triggers on first run.
       - key: FERENTIN_KEY_PASSPHRASE
         sync: false  # Set in dashboard (min 32 chars, generate: openssl rand -base64 48)
       - key: TLS_ENABLED
@@ -27,6 +25,8 @@ services:
       # Render terminates TLS at their proxy — disable port filtering
       - key: TLS_PORT_FILTERING_ENABLED
         value: "false"
+      # Don't set TENANT_ID, SITE_ID, or EDGE_ID — they're derived from the
+      # enrollment token's JWT claims. Mismatches abort startup.
     # Render supports one disk per service
     # Mount to parent and use subdirectories
     disk:

@@ -80,15 +80,30 @@ Key configuration:
 
 The HTTPS listener on port 9443 activates automatically once server certificates are provisioned during bootstrap enrollment.
 
+## What this exposes
+
+Once enrolled, the Service Edge serves both LLM and MCP traffic on port **9443** (HTTPS):
+
+| Capability | Endpoints |
+|---|---|
+| **LLM Proxy** | `/v1/chat/completions`, `/v1/messages`, `/v1/models`, `/v1/embeddings` — drop-in for OpenAI / Anthropic SDKs |
+| **MCP Gateway** | `/v1/mcp/{server-slug}` — Streamable HTTP transport, [2025-11-25 spec](https://modelcontextprotocol.io/specification/2025-11-25); proxies to upstream MCP servers (private or SaaS) with tenant-scoped policy enforcement |
+
+What's active is controlled by the enrollment token's `capabilities` claim, not env vars.
+
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `ENROLLMENT_TOKEN` | Yes (first run) | Enrollment token from admin console (single-use, 15-min TTL). Bootstrap auto-triggers when this is set and no certs exist on the cert volume. After enrollment it's harmless — the runner short-circuits on valid certs. Pass via Secrets Manager / SSM, not the task definition env. |
+| `FERENTIN_KEY_PASSPHRASE` | Yes | Passphrase for at-rest key encryption (min 32 chars). Pass via Secrets Manager / SSM. |
 | `SPRING_PROFILES_ACTIVE` | No | Spring profile (default: `aws-secure`) |
-| `BOOTSTRAP_ENABLED` | Yes | Set to `true` for first-time enrollment |
-| `ENROLLMENT_TOKEN` | Yes | Enrollment token from admin console |
 | `TLS_ENABLED` | No | Enable HTTPS listener (default: `true`) |
 | `TLS_PORT` | No | HTTPS listener port (default: `9443`) |
+| `BOOTSTRAP_ENABLED` | No | Kill-switch only — set to `false` to suppress bootstrap. Operators should not flip this in normal use. |
+| `BOOTSTRAP_FORCE` | No | Force re-enrollment even when valid certs exist. Used during recovery scenarios. |
+
+> **Don't add `TENANT_ID`, `SITE_ID`, or `EDGE_ID` to the task definition.** Tenant / site / edge identity is derived from the JWT claims at bootstrap; a mismatch with the token aborts startup.
 
 ## Security
 
