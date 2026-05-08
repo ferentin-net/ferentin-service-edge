@@ -145,7 +145,7 @@ Browse all published versions on the [GHCR package page](https://github.com/orgs
 Images are signed with [cosign](https://github.com/sigstore/cosign) using GitHub's OIDC keyless flow:
 
 ```bash
-cosign verify ghcr.io/ferentin-net/service-edge:0.4.1 \
+cosign verify ghcr.io/ferentin-net/service-edge:0.4.0 \
   --certificate-identity-regexp 'https://github.com/ferentin-net/ferentin-platform/.+' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
