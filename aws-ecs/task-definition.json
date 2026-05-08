@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "service-edge",
-      "image": "ghcr.io/ferentin-net/service-edge:0.3.5",
+      "image": "ghcr.io/ferentin-net/service-edge:0.4.0",
       "essential": true,
       "readonlyRootFilesystem": true,
       "user": "1000:1000",
