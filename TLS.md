@@ -17,21 +17,17 @@ During bootstrap enrollment, each Service Edge instance receives **two certifica
 
 ## Load Balancing Multiple Edges
 
-For high availability, deploy multiple edge instances behind a reverse proxy at each site. The load balancer terminates the public TLS certificate and re-encrypts to the edges.
+For high availability, deploy multiple edge instances behind a reverse proxy at each site. The load balancer terminates the public TLS certificate and re-encrypts to the edges — the path is encrypted end-to-end.
 
-```
-      Clients (SDKs, Apps, AI Agents)
-                 │
-                 │ HTTPS
-                 ▼
-          ┌──────────────┐
-          │ Load Balancer │
-          └──┬────────┬──┘
-             │        │
-       HTTPS │        │ HTTPS   ← end-to-end encrypted
-             ▼        ▼
-         Edge 1    Edge 2
-          :9443     :9443
+```mermaid
+flowchart TB
+    CLIENT["Clients (SDKs, Apps, AI Agents)"]
+    LB["Load Balancer<br/>(public TLS cert)"]
+    EDGE1["Service Edge 1<br/>:9443"]
+    EDGE2["Service Edge 2<br/>:9443"]
+    CLIENT -->|"HTTPS"| LB
+    LB -->|"HTTPS<br/>(edge server cert)"| EDGE1
+    LB -->|"HTTPS<br/>(edge server cert)"| EDGE2
 ```
 
 **Key points**:

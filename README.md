@@ -13,6 +13,31 @@ Service Edge is a secure, production-ready container that provides:
 - **Direct telemetry export** — structured audit events streamed to the control plane via mTLS gRPC; zero sampling.
 - **Capability gating** — what each edge exposes (LLM, MCP, or both) is controlled by the enrollment token's `capabilities` claim, not environment variables.
 
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+    subgraph CUSTOMER["Customer Network"]
+        APP["Your application<br/>(OpenAI / Anthropic / MCP SDK)"]
+        EDGE["Service Edge<br/>:9443 HTTPS<br/>(this container)"]
+        PRIV_LLM["Private LLM<br/>(vLLM, Ollama, Bedrock VPC)"]
+        PRIV_MCP["Private MCP servers"]
+        APP -->|"HTTPS"| EDGE
+        EDGE -->|"HTTPS"| PRIV_LLM
+        EDGE -->|"HTTPS"| PRIV_MCP
+    end
+    subgraph CLOUD["Ferentin Cloud"]
+        CP["Control Plane<br/>cp.ferentin.net"]
+    end
+    PUB_LLM["Public LLM APIs<br/>(OpenAI, Anthropic, xAI, Mistral)"]
+    PUB_MCP["SaaS MCP servers"]
+    EDGE <-.->|"mTLS gRPC<br/>policy + telemetry"| CP
+    EDGE -->|"HTTPS"| PUB_LLM
+    EDGE -->|"HTTPS"| PUB_MCP
+```
+
+The edge sits between your application and upstream services. Workload data (LLM prompts, MCP tool calls, responses) flows through the edge but stays inside your network whenever the destination does — only policy bundles (in) and audit telemetry (out) travel over the mTLS gRPC channel to the Ferentin Cloud.
+
 ## Container Images
 
 | Registry | Image |
