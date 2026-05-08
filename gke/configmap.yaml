@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-edge-config
+  namespace: ferentin
+  labels:
+    app.kubernetes.io/name: service-edge
+    app.kubernetes.io/component: config
+data:
+  # Spring profile (determines control plane URL)
+  # - aws-secure: Production (https://cp.ferentin.net) — the same profile name is used on GCP;
+  #   it just selects production control-plane endpoints.
+  # - nginx: Local development (https://cp.local.ferentin.test)
+  SPRING_PROFILES_ACTIVE: "aws-secure"
+
+  # Optional: Enable Java 25 virtual threads
+  ENABLE_VIRTUAL_THREADS: "false"
+
+  # TLS Listener Configuration
+  # The HTTPS listener binds AFTER bootstrap completes — see TlsListenerService logs.
+  TLS_ENABLED: "true"
+  TLS_PORT: "9443"
+  # Tenant/site/edge identity is derived from the JWT claims at bootstrap.
+  # Don't set TENANT_ID, SITE_ID, or EDGE_ID — mismatches with the token abort startup.
+  # BOOTSTRAP_ENABLED is a kill-switch only; bootstrap auto-triggers when ENROLLMENT_TOKEN
+  # is present and no certs are on the cert PVC.

@@ -1,0 +1,20 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: service-edge-backend
+  namespace: ferentin
+spec:
+  # Health check the HTTP listener (port 9080) — it binds immediately at startup,
+  # unlike the HTTPS listener (port 9443) which only binds after bootstrap completes.
+  healthCheck:
+    type: HTTP
+    requestPath: /actuator/health/liveness
+    port: 9080
+    checkIntervalSec: 15
+    timeoutSec: 10
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+  # Streaming-friendly timeouts for SSE/MCP traffic on the LB-to-backend leg.
+  timeoutSec: 300
+  connectionDraining:
+    drainingTimeoutSec: 60

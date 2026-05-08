@@ -1,0 +1,37 @@
+# Filestore CSI volumes for multi-replica deployments.
+#
+# For single-replica deployments, use ReadWriteOnce + premium-rwo instead.
+# The Filestore Enterprise tier (used by enterprise-rwx) has a 1 TiB minimum;
+# Filestore Basic (zonal-rwx) starts at 1 TiB but is cheaper.
+#
+# See https://cloud.google.com/filestore/docs/csi-driver for tier selection.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: service-edge-certs-pvc
+  namespace: ferentin
+  labels:
+    app.kubernetes.io/name: service-edge
+    app.kubernetes.io/component: certs-storage
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: enterprise-rwx       # Filestore CSI (multi-zone)
+  resources:
+    requests:
+      storage: 1Ti                       # Filestore minimum; certs use <100 MiB
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: service-edge-policy-pvc
+  namespace: ferentin
+  labels:
+    app.kubernetes.io/name: service-edge
+    app.kubernetes.io/component: policy-storage
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: enterprise-rwx
+  resources:
+    requests:
+      storage: 1Ti                       # Filestore minimum; policy bundle uses <100 MiB

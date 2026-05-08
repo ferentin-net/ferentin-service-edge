@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: service-edge
+  namespace: ferentin
+  annotations:
+    # GKE-managed L7 load balancer
+    kubernetes.io/ingress.class: "gce"
+    # Reference the ManagedCertificate by name (managedcertificate.yaml)
+    networking.gke.io/managed-certificates: "service-edge-cert"
+    # Force HTTPS-only (HTTP→HTTPS redirect)
+    networking.gke.io/v1beta1.FrontendConfig: "service-edge-frontend"
+spec:
+  defaultBackend:
+    service:
+      name: service-edge
+      port:
+        number: 9443
+---
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: service-edge-frontend
+  namespace: ferentin
+spec:
+  redirectToHttps:
+    enabled: true
+    responseCodeName: MOVED_PERMANENTLY_DEFAULT

@@ -30,7 +30,11 @@ jobs:
             aws-ecs/task-definition.json \
             fly.io/fly.toml \
             kubernetes/deployment.yaml \
-            render/render.yaml
+            render/render.yaml \
+            gke/deployment.yaml \
+            cloud-run/service.yaml \
+            cloud-run/README.md \
+            gce/README.md
 
           # Helm values.yaml — tag field
           sed -i "s|tag: \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*[^\"]*\"|tag: \"${VERSION}\"|g" \

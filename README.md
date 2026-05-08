@@ -167,9 +167,12 @@ The following checks were performed on each of these signatures:
 | Platform | Guide |
 |---|---|
 | Docker Compose | [docker-compose/](docker-compose/) |
-| Kubernetes | [kubernetes/](kubernetes/) |
+| Kubernetes (generic) | [kubernetes/](kubernetes/) |
 | Helm | [helm/service-edge/](helm/service-edge/) |
 | AWS ECS (Fargate / EC2) | [aws-ecs/](aws-ecs/) |
+| Google Cloud — GKE | [gke/](gke/) |
+| Google Cloud — Cloud Run | [cloud-run/](cloud-run/) |
+| Google Cloud — GCE / MIG | [gce/](gce/) |
 | Fly.io | [fly.io/](fly.io/) |
 | Railway | [railway/](railway/) |
 | Render | [render/](render/) |

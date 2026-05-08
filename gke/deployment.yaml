@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-edge
+  namespace: ferentin
+  labels:
+    app.kubernetes.io/name: service-edge
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: service-edge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: service-edge
+    spec:
+      # Bind to the Workload-Identity-annotated KSA (see serviceaccount.yaml).
+      # The pod inherits the bound GCP SA's IAM permissions for Vertex AI etc.
+      serviceAccountName: ferentin-edge
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: service-edge
+          image: ghcr.io/ferentin-net/service-edge:0.4.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: https
+              containerPort: 9443
+              protocol: TCP
+            - name: http
+              containerPort: 9080
+              protocol: TCP
+
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+          envFrom:
+            - configMapRef:
+                name: service-edge-config
+
+          env:
+            - name: ENROLLMENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: service-edge-secrets
+                  key: enrollment-token
+            - name: FERENTIN_KEY_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: service-edge-secrets
+                  key: key-passphrase
+
+          volumeMounts:
+            - { name: certs,  mountPath: /opt/ferentin/certs }
+            - { name: policy, mountPath: /opt/ferentin/policy }
+            - { name: logs,   mountPath: /opt/ferentin/logs }
+            - { name: data,   mountPath: /opt/ferentin/data }
+            - { name: tmp,    mountPath: /opt/ferentin/tmp }
+
+          # Probes target the HTTP listener (9080) which binds at startup.
+          # The HTTPS listener (9443) binds after bootstrap — probing it
+          # would fail liveness during initial enrollment.
+          livenessProbe:
+            tcpSocket:
+              port: 9080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 9080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits:   { cpu: 2,    memory: 2Gi }
+
+      volumes:
+        - name: certs
+          persistentVolumeClaim:
+            claimName: service-edge-certs-pvc
+        - name: policy
+          persistentVolumeClaim:
+            claimName: service-edge-policy-pvc
+        - name: logs
+          emptyDir: { sizeLimit: 100Mi }
+        - name: data
+          emptyDir: { sizeLimit: 50Mi }
+        - name: tmp
+          emptyDir: { medium: Memory, sizeLimit: 100Mi }

@@ -1,0 +1,11 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: service-edge-cert
+  namespace: ferentin
+spec:
+  domains:
+    # Replace with your edge's public hostname. The domain must resolve to the
+    # LB's external IP before the cert can be provisioned (Google validates via
+    # HTTP-01). Provisioning takes 15-60 minutes after DNS resolves.
+    - edge.example.com

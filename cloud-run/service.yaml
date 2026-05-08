@@ -1,0 +1,95 @@
+# Cloud Run service definition for Ferentin Service Edge.
+#
+# Replace placeholders before applying:
+#   PROJECT_ID    — your GCP project
+#   FILESTORE_IP  — IP of your Filestore instance (from `gcloud filestore instances describe`)
+#
+# Apply with:
+#   gcloud run services replace service.yaml --region=us-central1
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: service-edge
+  annotations:
+    # Pin to a single revision while it bootstraps; scale up only after enrollment.
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      annotations:
+        # VPC connector for private access to Filestore
+        run.googleapis.com/vpc-access-connector: ferentin-edge-conn
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+        # Single-instance during bootstrap (see README — Single-revision constraint)
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
+        # Allow startup probe enough time for the bootstrap → policy-fetch flow
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      serviceAccountName: ferentin-edge-runtime@PROJECT_ID.iam.gserviceaccount.com
+      timeoutSeconds: 300
+      containerConcurrency: 80
+      containers:
+        - image: ghcr.io/ferentin-net/service-edge:0.4.1
+          ports:
+            - name: http1
+              containerPort: 9080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: aws-secure
+            # Cloud Run terminates TLS at the front-end. Disable the edge's
+            # own HTTPS listener and the port-filtering enforcement.
+            - name: TLS_ENABLED
+              value: "false"
+            - name: TLS_PORT_FILTERING_ENABLED
+              value: "false"
+            - name: ENROLLMENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ferentin-edge-enrollment-token
+                  key: latest
+            - name: FERENTIN_KEY_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: ferentin-edge-key-passphrase
+                  key: latest
+          volumeMounts:
+            - name: certs
+              mountPath: /opt/ferentin/certs
+            - name: policy
+              mountPath: /opt/ferentin/policy
+          resources:
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          startupProbe:
+            tcpSocket:
+              port: 9080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 9080
+            periodSeconds: 30
+            timeoutSeconds: 10
+      volumes:
+        # Filestore NFS mounts for persistent cert and policy storage.
+        # Adjust /vol1/certs and /vol1/policy to match the Filestore share name + paths
+        # you provisioned. Cloud Run creates the subdirectories on first mount.
+        - name: certs
+          nfs:
+            server: FILESTORE_IP
+            path: /vol1/certs
+            readOnly: false
+        - name: policy
+          nfs:
+            server: FILESTORE_IP
+            path: /vol1/policy
+            readOnly: false
+  traffic:
+    - percent: 100
+      latestRevision: true
