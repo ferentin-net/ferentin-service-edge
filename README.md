@@ -1,17 +1,14 @@
 # Ferentin Service Edge
 
-Deployment configurations for Ferentin Service Edge - a hardened LLM gateway container for edge deployments.
+Hardened LLM and MCP gateway container — deployed at the customer edge with policy enforcement, multi-provider routing, and direct mTLS telemetry to the Ferentin control plane.
 
-## Overview
+[![Container Image](https://img.shields.io/badge/ghcr.io-ferentin--net%2Fservice--edge-2496ED?logo=docker&logoColor=white)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
+[![Latest Release](https://img.shields.io/github/v/tag/ferentin-net/ferentin-platform?filter=service-edge-*&label=latest%20release&color=blue)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
+[![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
+[![Signed](https://img.shields.io/badge/signed-cosign-green)](#security-features)
+[![License](https://img.shields.io/badge/license-proprietary-lightgrey)](#license)
 
-Service Edge is a secure, production-ready container that provides:
-
-- **OpenAI-compatible LLM proxy** — `/v1/chat/completions`, `/v1/messages`, `/v1/models`, `/v1/embeddings` — drop-in for the OpenAI / Anthropic SDK with policy-driven routing across OpenAI, Anthropic, Azure OpenAI, AWS Bedrock, Google Vertex AI, Google AI Studio, xAI, Mistral, and self-hosted endpoints (vLLM, Ollama).
-- **MCP Gateway** — `/v1/mcp/{server-slug}` — proxies [Model Context Protocol](https://modelcontextprotocol.io) tool calls to upstream MCP servers (private or SaaS) with tenant-scoped authorization, session management, and per-tool audit logging. Streamable HTTP transport ([2025-11-25 spec](https://modelcontextprotocol.io/specification/2025-11-25)).
-- **Policy enforcement** — every LLM call and every MCP tool invocation is authorized against the policy bundle before execution; deny by default.
-- **Automatic certificate management** — bootstrap enrollment issues mTLS client cert (for control-plane comms) and TLS server cert (for the 9443 HTTPS listener); automatic renewal before expiry.
-- **Direct telemetry export** — structured audit events streamed to the control plane via mTLS gRPC; zero sampling.
-- **Capability gating** — what each edge exposes (LLM, MCP, or both) is controlled by the enrollment token's `capabilities` claim, not environment variables.
+This repository carries the deployment recipes — Docker Compose, Kubernetes manifests, Helm chart, AWS ECS task definitions, Fly.io / Render / Railway configs — for the `ghcr.io/ferentin-net/service-edge` container. The image source and CI/CD live in [`ferentin-platform`](https://github.com/ferentin-net/ferentin-platform); this repo is updated automatically on each release.
 
 ## Architecture at a glance
 
@@ -36,40 +33,31 @@ flowchart LR
     EDGE -->|"HTTPS"| PUB_MCP
 ```
 
-The edge sits between your application and upstream services. Workload data (LLM prompts, MCP tool calls, responses) flows through the edge but stays inside your network whenever the destination does — only policy bundles (in) and audit telemetry (out) travel over the mTLS gRPC channel to the Ferentin Cloud.
+The edge sits between your application and upstream services. Workload data (LLM prompts, MCP tool calls, responses) flows through the edge but stays inside your network whenever the destination does — only signed policy bundles (in) and audit telemetry (out) travel over the mTLS gRPC channel to the Ferentin Cloud.
 
-## Container Images
+## Features
 
-| Registry | Image |
-|----------|-------|
-| GitHub Container Registry | `ghcr.io/ferentin-net/service-edge:<version>` |
-| Amazon ECR | `089534985149.dkr.ecr.us-east-1.amazonaws.com/ferentin/service-edge:<version>` |
-
-> **Pin to a specific version** (e.g., `service-edge:1.2.3`). Avoid using `:latest` in production — it makes deployments non-deterministic, complicates rollbacks, and may pull breaking changes. See [releases](https://github.com/ferentin-net/service-edge/releases) for available versions.
-
-## Security Features
-
-The Service Edge image is hardened with:
-
-- Read-only root filesystem
-- Non-root user (UID 1000)
-- No package manager in runtime
-- setuid/setgid bits removed
-- Cosign-signed images
-- Ubuntu Noble (glibc) base image
+- **OpenAI / Anthropic-compatible LLM proxy** — `/v1/chat/completions`, `/v1/messages`, `/v1/models`, `/v1/embeddings`. Drop-in for the OpenAI / Anthropic SDK.
+- **Multi-provider routing** — policy-driven dispatch across OpenAI, Anthropic, Azure OpenAI, AWS Bedrock, Google Vertex AI, Google AI Studio, xAI, Mistral, and self-hosted endpoints (vLLM, Ollama).
+- **MCP Gateway** — `/v1/mcp/{server-slug}` proxies [Model Context Protocol](https://modelcontextprotocol.io) tool calls to upstream MCP servers (private or SaaS) with per-tool authorization. Streamable HTTP transport ([2025-11-25 spec](https://modelcontextprotocol.io/specification/2025-11-25)).
+- **Zero-trust enforcement** — every LLM call and every MCP tool invocation is authorized against the policy bundle before execution; deny by default.
+- **Automatic certificate management** — bootstrap enrollment issues mTLS client cert (control-plane comms) and HTTPS server cert (port 9443 listener); auto-renewal before expiry.
+- **Direct telemetry export** — structured audit events streamed via mTLS gRPC; zero sampling.
+- **Capability gating** — what each edge exposes (LLM, MCP, or both) is controlled by the enrollment token's `capabilities` claim, not environment variables.
+- **Hardened image** — read-only root filesystem, non-root UID 1000, dropped capabilities, no shell or package manager in the runtime layer, cosign-signed.
 
 ## Quick Start
 
-### 1. Get an Enrollment Token
+### 1. Get an enrollment token
 
 1. Log into the [Ferentin Admin Console](https://admin.ferentin.net)
 2. Navigate to **Edge Nodes** > **Add Edge Node**
-3. Copy the enrollment token
+3. Copy the enrollment token (single-use, 15-minute TTL by default)
 
 ### 2. Deploy with Docker
 
 ```bash
-# Create persistent volumes
+# Create persistent volumes for certs and policy bundle
 docker volume create service-edge-certs
 docker volume create service-edge-policy
 
@@ -79,7 +67,7 @@ docker run --rm \
   -v service-edge-policy:/opt/ferentin/policy \
   alpine:latest chown -R 1000:1000 /opt/ferentin/certs /opt/ferentin/policy
 
-# Generate a passphrase for private key encryption (store this securely!)
+# Generate a passphrase for at-rest key encryption (store this securely!)
 export FERENTIN_KEY_PASSPHRASE=$(openssl rand -base64 48)
 echo "Save this passphrase — if lost, the edge must re-enroll:"
 echo "$FERENTIN_KEY_PASSPHRASE"
@@ -101,14 +89,14 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=aws-secure \
   --security-opt no-new-privileges:true \
   --cap-drop ALL \
-  ghcr.io/ferentin-net/service-edge:0.4.0  # Pin to a specific version
+  ghcr.io/ferentin-net/service-edge:0.4.0
 ```
 
-> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID` as environment variables.** They're derived from the enrollment token's JWT claims (`tid`, `site_id`, `edge_type`). Any env var that disagrees with the token aborts startup.
+> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID` as environment variables.** They're derived from the enrollment token's JWT claims (`tid`, `site_id`, `edge_id`, `edge_type`). Any env var that disagrees with the token aborts startup.
 
-### 3. Verify Enrollment
+### 3. Verify enrollment
 
-The HTTP listener (9080) binds at process start. The HTTPS listener (9443) binds **after** bootstrap completes — it needs the server cert in hand before opening a TLS socket. Expect `9443` to come up a few seconds after the container starts on first run.
+The HTTP listener (9080) binds at process start. The HTTPS listener (9443) binds **after** bootstrap completes — it needs the server cert in hand before opening a TLS socket. Expect 9443 to come up a few seconds after the container starts on first run.
 
 ```bash
 # Health check on the HTTP listener (binds immediately at startup)
@@ -119,137 +107,150 @@ docker logs service-edge 2>&1 | grep TlsListenerService
 # Expected: "TLS HTTPS listener bound on port 9443 (reason: certificates-available)"
 # (or "application-ready" on warm restarts)
 
-# Test LLM API over TLS (after the bind log line above appears)
+# Test the LLM API over TLS (after the bind log line above appears)
 curl https://localhost:9443/v1/models
 
-# Test MCP Gateway (if the enrollment token has the mcp capability)
+# Test the MCP Gateway (if the enrollment token has the mcp capability)
 curl -X POST https://localhost:9443/v1/mcp/<server-slug> \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-## Ports
+## Container Image
 
-| Port | Protocol | Purpose | Exposure |
-|------|----------|---------|----------|
-| 9443 | HTTPS | LLM API endpoints (primary) | External |
-| 9080 | HTTP | Health checks, actuator only | Internal only |
+| Registry | Image |
+|---|---|
+| GitHub Container Registry | `ghcr.io/ferentin-net/service-edge` |
+| Amazon ECR | `089534985149.dkr.ecr.us-east-1.amazonaws.com/ferentin/service-edge` |
 
-Port 9443 is the primary API port for all LLM traffic. It activates automatically once server certificates are provisioned during bootstrap enrollment. Port 9080 is restricted to health checks and actuator endpoints — LLM API endpoints (`/v1/chat/completions`, `/v1/messages`, etc.) are blocked on this port.
+**Architectures**: `linux/amd64`, `linux/arm64` (manifest list — Docker pulls the right variant automatically).
+
+### Available tags
+
+The image publishes several tag granularities; pick the one that matches your update tolerance:
+
+| Tag | Example | When it moves |
+|---|---|---|
+| Exact | `service-edge:0.4.0` | Never. **Recommended for production.** |
+| Minor | `service-edge:0.4` | When a patch ships (e.g., 0.4.1). |
+| Major | `service-edge:0` | When a minor ships (e.g., 0.5.0). |
+| Floating | `service-edge:latest` | Every release. Avoid in production. |
+| Digest | `service-edge@sha256:...` | Never. Strongest pin. Recommended with image-signing verification. |
+| Commit | `service-edge:sha-<short>` | Never. One per source commit; useful for tracing back to source. |
+
+Browse all published versions on the [GHCR package page](https://github.com/orgs/ferentin-net/packages/container/package/service-edge).
+
+> **Pin to a specific version in production.** `:latest` is a moving tag — it makes deployments non-deterministic and rollbacks ambiguous.
+
+### Verifying image signatures
+
+Images are signed with [cosign](https://github.com/sigstore/cosign) using GitHub's OIDC keyless flow:
+
+```bash
+cosign verify ghcr.io/ferentin-net/service-edge:0.4.0 \
+  --certificate-identity-regexp 'https://github.com/ferentin-net/ferentin-platform/.+' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 ## Deployment Guides
 
 | Platform | Guide |
-|----------|-------|
+|---|---|
 | Docker Compose | [docker-compose/](docker-compose/) |
 | Kubernetes | [kubernetes/](kubernetes/) |
 | Helm | [helm/service-edge/](helm/service-edge/) |
-| AWS ECS | [aws-ecs/](aws-ecs/) |
+| AWS ECS (Fargate / EC2) | [aws-ecs/](aws-ecs/) |
 | Fly.io | [fly.io/](fly.io/) |
 | Railway | [railway/](railway/) |
 | Render | [render/](render/) |
 
-### Multi-Instance and TLS
+For multi-instance deployments behind a load balancer (Nginx, HAProxy, Caddy, Envoy, AWS ALB), see [TLS.md](TLS.md) — covers end-to-end encryption, backend cert verification, and multi-instance topology.
 
-For high availability, deploy multiple Service Edge instances behind a load balancer. See [TLS.md](TLS.md) for:
-- How server and client certificates work
-- Load balancer configuration (Nginx, HAProxy, Caddy, Envoy, ALB)
-- End-to-end encryption setup
-- Multi-instance Docker Compose example
+## Configuration
 
-## Required Volumes
+### Required volumes
 
 | Path | Purpose | Type | Persistence |
-|------|---------|------|-------------|
-| `/opt/ferentin/certs` | mTLS certificates | Persistent | **Required** |
-| `/opt/ferentin/policy` | Policy bundles | Persistent | Recommended |
-| `/opt/ferentin/logs` | Application logs | tmpfs/Persistent | Optional |
-| `/opt/ferentin/data` | Runtime data | tmpfs/Persistent | Optional |
-| `/opt/ferentin/tmp` | Java temp files | tmpfs | Ephemeral |
+|---|---|---|---|
+| `/opt/ferentin/certs` | mTLS certs + encrypted private keys | Persistent | **Required** — losing this means re-enrollment |
+| `/opt/ferentin/policy` | Policy bundle cache | Persistent | Recommended (recoverable on cold start, but adds latency) |
+| `/opt/ferentin/logs` | Audit log buffer (gRPC export source) | tmpfs OK | Ephemeral |
+| `/opt/ferentin/data` | Runtime state | tmpfs OK | Ephemeral |
+| `/opt/ferentin/tmp` | Working scratch space | tmpfs OK | Ephemeral |
 
-## Environment Variables
+The image runs as non-root UID 1000. Persistent volumes need `chown -R 1000:1000` (Docker) or `fsGroup: 1000` (Kubernetes).
 
-### Bootstrap Configuration
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ENROLLMENT_TOKEN` | Yes (first run) | - | JWT enrollment token from admin console. Single-use, 15-min TTL by default. Bootstrap auto-triggers when this is present and no certs are on the volume; on warm restarts the token is harmless (the runner short-circuits on valid certs). After enrollment you can leave it in the env or remove it. |
-| `SPRING_PROFILES_ACTIVE` | No | `aws-secure` | Spring profile for configuration. `aws-secure` for production, `nginx` for local development against a self-hosted control plane. |
-| `BOOTSTRAP_ENABLED` | No | `true` | Kill-switch. Set to `false` to suppress bootstrap (e.g., a debugging container that should never enroll). Operators should not set this in normal use — bootstrap is gated by `ENROLLMENT_TOKEN` presence and on-disk cert state. |
-| `BOOTSTRAP_FORCE` | No | `false` | Force re-enrollment even when valid certs exist. Used during recovery scenarios. |
-
-> **Identity is derived from the JWT, not from environment variables.** Tenant ID, site ID, edge ID, and edge type all come from the enrollment token's claims (`tid`, `site_id`, `edge_id`, `edge_type`). Setting `TENANT_ID`, `SITE_ID`, or `EDGE_ID` as env vars is unnecessary and a mismatch with the token aborts startup.
-
-### Security Configuration
+### Bootstrap and identity
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `FERENTIN_KEY_PASSPHRASE` | **Yes** | - | Passphrase for private key encryption at rest (minimum 32 characters). Protects `client.key` and `server.key` on disk using AES-256-GCM. Generate **once** with `openssl rand -base64 48` and store securely. Must be the same value on every restart — if lost, the edge must re-enroll. |
-| `FERENTIN_KEY_PASSPHRASE_OLD` | No | - | Set alongside `FERENTIN_KEY_PASSPHRASE` to rotate the passphrase. See [Passphrase Rotation](#passphrase-rotation). |
+|---|---|---|---|
+| `ENROLLMENT_TOKEN` | Yes (first run) | — | JWT enrollment token from admin console. Single-use, 15-min TTL. Bootstrap auto-triggers when set and no certs are on the volume; on warm restarts the token is harmless (the runner short-circuits on valid certs). |
+| `SPRING_PROFILES_ACTIVE` | No | `aws-secure` | `aws-secure` for production, `nginx` for local dev against a self-hosted control plane. |
+| `BOOTSTRAP_ENABLED` | No | `true` | Kill-switch only. Set to `false` to suppress bootstrap entirely. Operators should not flip this in normal use. |
+| `BOOTSTRAP_FORCE` | No | `false` | Force re-enrollment even when valid certs exist. Used during recovery. |
 
-### TLS Configuration
+> **Identity is derived from the JWT, not from environment variables.** Tenant ID, site ID, edge ID, and edge type all come from the enrollment token's claims (`tid`, `site_id`, `edge_id`, `edge_type`). Setting `TENANT_ID`, `SITE_ID`, or `EDGE_ID` as env vars is unnecessary and any mismatch with the token aborts startup.
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `TLS_ENABLED` | No | `true` | Enable HTTPS listener on port 9443 |
-| `TLS_PORT` | No | `9443` | HTTPS listener port |
-
-### Runtime Configuration
+### Security
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `JAVA_OPTS` | No | See docs | Additional JVM options |
-| `ENABLE_VIRTUAL_THREADS` | No | `false` | Enable Java 25 virtual threads |
-| `EDGE_CA_BUNDLE` | No | - | Custom CA bundle (PEM format) |
+|---|---|---|---|
+| `FERENTIN_KEY_PASSPHRASE` | **Yes** | — | Passphrase for at-rest key encryption (min 32 chars). Protects `client.key` and `server.key` on disk using AES-256-GCM. Generate **once** with `openssl rand -base64 48`; store in your secret manager. **Lose it and you must re-enroll.** |
+| `FERENTIN_KEY_PASSPHRASE_OLD` | No | — | Set alongside `FERENTIN_KEY_PASSPHRASE` to rotate. See [Passphrase rotation](#passphrase-rotation). |
 
-## Health Checks
+### TLS listener
 
-| Endpoint | Purpose |
-|----------|---------|
-| TCP 9080 | Basic liveness |
-| `/actuator/health` | Full health status |
-| `/actuator/health/liveness` | Kubernetes liveness probe |
-| `/actuator/health/readiness` | Kubernetes readiness probe |
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `TLS_ENABLED` | No | `true` | Enable HTTPS listener on port 9443. |
+| `TLS_PORT` | No | `9443` | HTTPS listener port. |
+| `TLS_PORT_FILTERING_ENABLED` | No | `true` | Block LLM / MCP endpoints on the 9080 HTTP listener. Set `false` only when a trusted proxy terminates TLS upstream of the container (Fly.io, Render, Railway). |
 
-## API Endpoints
+### Runtime
 
-Once enrolled, Service Edge exposes APIs on port **9443** (TLS). Which capabilities are active depends on the enrollment token — the `capabilities` claim controls whether LLM and/or MCP endpoints are enabled.
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `JAVA_OPTS` | No | — | Additional JVM options. |
+| `ENABLE_VIRTUAL_THREADS` | No | `false` | Enable Java 25 virtual threads. |
+| `EDGE_CA_BUNDLE` | No | — | Custom CA bundle (PEM format) for trusting self-signed control planes in dev. |
 
-### OpenAI-Compatible
+### Ports
+
+| Port | Protocol | Purpose | Exposure |
+|---|---|---|---|
+| 9443 | HTTPS | LLM and MCP API (primary). Binds **after** bootstrap completes. | External |
+| 9080 | HTTP | Health checks and actuator only. Binds at startup; LLM/MCP endpoints are blocked here unless `TLS_PORT_FILTERING_ENABLED=false`. | Internal |
+
+## Endpoints
+
+Once enrolled, Service Edge exposes APIs on port **9443** (HTTPS). Which capabilities are active depends on the enrollment token's `capabilities` claim.
+
+### LLM Proxy
 
 | Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/chat/completions` | POST | Chat completions API |
-| `/v1/models` | GET | List available models |
+|---|---|---|
+| `/v1/chat/completions` | POST | OpenAI-compatible chat completions |
+| `/v1/messages` | POST | Anthropic-compatible Messages API |
+| `/v1/models` | GET | List available models for this tenant |
 | `/v1/embeddings` | POST | Embeddings API |
-
-### Anthropic-Compatible
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/messages` | POST | Messages API (Claude) |
 
 ### MCP Gateway
 
-The MCP Gateway proxies [MCP (Model Context Protocol)](https://modelcontextprotocol.io) requests to upstream MCP servers with tenant-scoped policy enforcement, session management, and audit logging.
+The MCP Gateway proxies [MCP](https://modelcontextprotocol.io) requests to upstream MCP servers with tenant-scoped policy enforcement, session management, and per-tool audit logging.
 
 | Endpoint | Method | Description |
-|----------|--------|-------------|
+|---|---|---|
 | `/v1/mcp/{server-slug}` | POST | MCP JSON-RPC 2.0 endpoint (Streamable HTTP transport) |
 | `/.well-known/oauth-protected-resource/v1/mcp` | GET | OAuth2 Protected Resource Metadata ([RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)) |
 | `/v1/mcp/.well-known/oauth-protected-resource` | GET | PRM discovery (alternative path) |
 
-**Route pattern**: `https://<edge-host>:9443/v1/mcp/{server-slug}`
+`{server-slug}` identifies the upstream MCP server (e.g., `github`, `slack`, `stripe`). Available slugs are defined in the tenant's policy bundle. Requires a Bearer token with `mcp` scope and supports `MCP-Session-Id` for session continuity.
 
-- `{server-slug}` identifies the upstream MCP server (e.g., `github`, `slack`, `stripe`)
-- Available server slugs are defined in the tenant's policy bundle
-- Requires a Bearer token with `mcp` scope (issued by the Ferentin authorization server)
-- Supports `MCP-Session-Id` header for session continuity
+**Supported JSON-RPC methods**: `initialize`, `tools/list`, `tools/call`, `ping`, `notifications/initialized`.
 
-**Supported JSON-RPC methods**: `initialize`, `tools/list`, `tools/call`, `ping`, `notifications/initialized`
+**Example — list tools on a GitHub MCP server**:
 
-**Example — List tools on a GitHub MCP server**:
 ```bash
 curl -X POST https://localhost:9443/v1/mcp/github \
   -H "Authorization: Bearer $TOKEN" \
@@ -257,7 +258,8 @@ curl -X POST https://localhost:9443/v1/mcp/github \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-**Example — Call a tool**:
+**Example — call a tool**:
+
 ```bash
 curl -X POST https://localhost:9443/v1/mcp/github \
   -H "Authorization: Bearer $TOKEN" \
@@ -266,18 +268,28 @@ curl -X POST https://localhost:9443/v1/mcp/github \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_user_profile","arguments":{}}}'
 ```
 
-### Capability Activation
+### Capability activation
 
-LLM and MCP capabilities are controlled by the enrollment token, not environment variables. When creating an enrollment token in the admin console, select which capabilities to enable:
-
-| Capability | Enrollment Claim | Endpoints Enabled |
-|------------|-----------------|-------------------|
+| Capability | Enrollment claim | Endpoints enabled |
+|---|---|---|
 | `llm` | `capabilities.llm: true` | `/v1/chat/completions`, `/v1/messages`, `/v1/models`, `/v1/embeddings` |
 | `mcp` | `capabilities.mcp: true` | `/v1/mcp/{server-slug}`, MCP discovery endpoints |
 
-## Passphrase Rotation
+### Health checks
 
-To change the `FERENTIN_KEY_PASSPHRASE` without re-enrolling the edge:
+| Endpoint | Purpose |
+|---|---|
+| TCP 9080 | Basic liveness |
+| `/actuator/health` | Full health status |
+| `/actuator/health/liveness` | Kubernetes liveness probe |
+| `/actuator/health/readiness` | Kubernetes readiness probe (initial bundle loaded, mTLS enrolled) |
+| `/actuator/prometheus` | Prometheus metrics |
+
+## Operations
+
+### Passphrase rotation
+
+To change `FERENTIN_KEY_PASSPHRASE` without re-enrolling:
 
 1. Generate a new passphrase:
    ```bash
@@ -285,7 +297,7 @@ To change the `FERENTIN_KEY_PASSPHRASE` without re-enrolling the edge:
    echo "New passphrase (store securely): $NEW_PASSPHRASE"
    ```
 
-2. Set both the old and new passphrases, then restart:
+2. Set both old and new, then restart:
 
    **Docker:**
    ```bash
@@ -309,39 +321,48 @@ To change the `FERENTIN_KEY_PASSPHRASE` without re-enrolling the edge:
    fly secrets set FERENTIN_KEY_PASSPHRASE="$NEW_PASSPHRASE" FERENTIN_KEY_PASSPHRASE_OLD="$OLD_PASSPHRASE"
    ```
 
-3. On startup, the edge will:
-   - Decrypt `client.key` and `server.key` with the old passphrase
-   - Re-encrypt both with the new passphrase
-   - Atomically replace the files on disk
-   - Continue normal operation with the new passphrase
+3. On startup the edge decrypts `client.key` and `server.key` with the old passphrase, re-encrypts both with the new passphrase, and atomically replaces the files on disk.
 
-4. After confirming the edge is running, **remove** `FERENTIN_KEY_PASSPHRASE_OLD` from the environment and restart once more. This is a cleanup step — the edge will operate normally without it.
+4. After confirming the edge is running, **remove** `FERENTIN_KEY_PASSPHRASE_OLD` and restart once more.
 
 **Important:**
-- The new passphrase must be at least 32 characters
-- The new passphrase must differ from the old one
-- If rotation fails (e.g., wrong old passphrase), the original files are left intact
-- Neither passphrase is logged
+- The new passphrase must be at least 32 characters and differ from the old one.
+- If rotation fails (e.g., wrong old passphrase), the original files are left intact.
+- Neither passphrase is logged.
+
+### Re-enrollment
+
+If certs are revoked or the cert volume is lost, re-enroll:
+
+1. Obtain a fresh enrollment token from the admin console.
+2. Set `BOOTSTRAP_FORCE=true` to bypass the on-disk-cert short-circuit.
+3. Restart the container.
+4. After successful re-enrollment, remove `BOOTSTRAP_FORCE` from the env.
 
 ## Troubleshooting
 
-### Container fails to start with "directory not mounted"
+### `curl https://...:9443/...` returns "Connection reset by peer"
 
-Ensure all required volumes are mounted:
+The 9443 TLS listener binds **after** bootstrap completes — on a fresh enrollment, expect a few seconds between startup and the listener coming up. Tail the logs:
 
 ```bash
-docker run --read-only \
-  -v service-edge-certs:/opt/ferentin/certs:rw \
-  -v service-edge-policy:/opt/ferentin/policy:rw \
-  --tmpfs /opt/ferentin/logs:rw,uid=1000,gid=1000 \
-  --tmpfs /opt/ferentin/data:rw,uid=1000,gid=1000 \
-  --tmpfs /opt/ferentin/tmp:rw,uid=1000,gid=1000 \
-  ...
+docker logs service-edge 2>&1 | grep TlsListenerService
 ```
+
+| Log line | Meaning |
+|---|---|
+| `TLS HTTPS listener bound on port 9443 (reason: certificates-available)` | First-time enrollment — bootstrap just wrote the server cert. Listener is up. |
+| `TLS HTTPS listener bound on port 9443 (reason: application-ready)` | Warm restart — server cert was already on the persistent volume. |
+| `TLS HTTPS listener bound on port 9443 (reason: certificates-refreshed)` | Cert rotation / re-enrollment. |
+| `TLS listener will bind once certificates are provisioned (port 9443)` | Bootstrap hasn't completed yet — wait a few seconds and re-check. |
+| `TLS listener disabled — skipping bind` | TLS is turned off (e.g., `TLS_ENABLED=false`). |
+| `Failed to bind TLS listener on port 9443: <error>` | Bind failed — port already taken, cert/key load error, or invalid permissions. |
+
+If no `TlsListenerService` lines appear at all, the edge crashed before reaching the TLS-bind path; look earlier in the log for the root cause (likely `EdgeBootstrapClientImpl` or invalid `FERENTIN_KEY_PASSPHRASE`). The 9080 HTTP listener stays up regardless, so `curl http://localhost:9080/actuator/health/liveness` works for diagnosing while 9443 is down.
 
 ### Container fails with "directory not writable"
 
-Fix volume permissions for the non-root user (UID 1000):
+Fix volume permissions for the non-root UID 1000:
 
 ```bash
 docker run --rm \
@@ -350,41 +371,61 @@ docker run --rm \
   alpine:latest chown -R 1000:1000 /opt/ferentin/certs /opt/ferentin/policy
 ```
 
-
-### `curl https://...:9443/...` returns "Connection reset by peer"
-
-The 9443 TLS listener binds **after** bootstrap completes — on a fresh enrollment, expect a few seconds between startup and the listener coming up. If it never comes up, tail the logs:
-
-```bash
-docker logs service-edge 2>&1 | grep TlsListenerService
-```
-
-Look for one of:
-
-| Log line | Meaning |
-|---|---|
-| `TLS HTTPS listener bound on port 9443 (reason: certificates-available)` | First-time enrollment — bootstrap just wrote the server cert. Listener is up. |
-| `TLS HTTPS listener bound on port 9443 (reason: application-ready)` | Warm restart — server cert was already on the persistent volume. |
-| `TLS HTTPS listener bound on port 9443 (reason: certificates-refreshed)` | Cert rotation / re-enrollment. |
-| `TLS listener will bind once certificates are provisioned (port 9443)` | Bootstrap hasn't completed yet — wait a few seconds and re-check. |
-| `TLS listener disabled — skipping bind` | TLS is turned off (e.g., `TLS_ENABLED=false`). Only the 9080 HTTP listener is up. |
-| `Failed to bind TLS listener on port 9443: <error>` | Bind failed — port already taken, cert/key load error, or invalid permissions. Inspect the error message. |
-
-If no `TlsListenerService` lines appear at all, the edge crashed before reaching the TLS-bind path; look earlier in the log for the root cause (likely `EdgeBootstrapClientImpl` or invalid `FERENTIN_KEY_PASSPHRASE`). The 9080 HTTP listener stays up regardless, so `curl http://localhost:9080/actuator/health/liveness` works for diagnosing while 9443 is down.
+On Kubernetes, set `fsGroup: 1000` on the pod's `securityContext`.
 
 ### Bootstrap enrollment fails
 
-1. Verify the enrollment token is valid (not expired — single-use, 15-min TTL).
+1. Verify the enrollment token is valid (single-use, 15-min TTL by default).
 2. Check network connectivity to the Ferentin control plane (`cp.ferentin.net:443`).
-3. Verify `FERENTIN_KEY_PASSPHRASE` is at least 32 characters and matches the value used at first enrollment (it's required to decrypt the persisted private keys on every start).
+3. Verify `FERENTIN_KEY_PASSPHRASE` is at least 32 characters and matches the value used at first enrollment (it's required to decrypt persisted private keys on every start).
 4. Review logs: `docker logs service-edge`.
+
+## Security Features
+
+The image is hardened with:
+
+- Read-only root filesystem (`--read-only` in Docker, `readOnlyRootFilesystem: true` in Kubernetes)
+- Non-root user (UID 1000)
+- All Linux capabilities dropped (`--cap-drop ALL`)
+- `no-new-privileges` enforced
+- No package manager or shell utilities in the runtime layer
+- `setuid` / `setgid` bits stripped from binaries
+- Cosign-signed images (keyless, GitHub OIDC); see [Verifying image signatures](#verifying-image-signatures)
+- Ubuntu Noble (glibc) base image, regularly rebuilt for CVE patches
+
+End-to-end TLS for workload traffic: clients reach the edge over HTTPS (port 9443) using the Ferentin-issued server cert, and the edge re-encrypts when calling upstream LLMs and MCP servers. There is no plaintext hop. See [TLS.md](TLS.md) for load-balancer topologies.
+
+## CI/CD
+
+The image is built and published from the [`ferentin-platform`](https://github.com/ferentin-net/ferentin-platform) source repo. This deployment-recipes repo is downstream of releases:
+
+```mermaid
+flowchart LR
+    DEV["Push tag<br/>service-edge-X.Y.Z<br/>(ferentin-platform)"]
+    BUILD["Build & push<br/>multi-arch image<br/>+ cosign sign"]
+    GHCR["ghcr.io/<br/>ferentin-net/<br/>service-edge"]
+    BUMP["update-version.yml<br/>(this repo)"]
+    DEV --> BUILD
+    BUILD --> GHCR
+    BUILD --> BUMP
+    BUMP -->|"sed-bumps recipes"| RECIPES["docker-compose.yml<br/>kubernetes/deployment.yaml<br/>helm/values.yaml<br/>fly.toml<br/>render.yaml<br/>ECS task-definition.json"]
+```
+
+When a `service-edge-X.Y.Z` tag is pushed in `ferentin-platform`:
+
+1. The platform repo's `build-service-edge-image.yml` workflow builds a multi-arch image (amd64 + arm64), pushes to GHCR and ECR, and signs with cosign.
+2. The same workflow then triggers `update-version.yml` in this repo via `gh workflow run`, passing the new version.
+3. `update-version.yml` runs `sed` across the deployment recipes — bumping every `ghcr.io/ferentin-net/service-edge:X.Y.Z` reference, plus `SERVICE_EDGE_VERSION=` in the env file, plus `appVersion` in `helm/Chart.yaml`.
+4. The auto-bump produces a single `chore: update service-edge image to vX.Y.Z` commit on `main`.
+
+This means **users pulling the recipes from this repo always get the latest pinned version**. If you don't want auto-bumps, vendor a copy of the recipes into your own infra repo and pin to a specific commit / tag of this one.
 
 ## Support
 
-- [Documentation](https://docs.ferentin.net)
-- [Issues](https://github.com/ferentin-net/ferentin-service-edge/issues)
+- [Documentation](https://docs.ferentin.net) — full operator guides, including the [Service Edge — Getting Started](https://docs.ferentin.net/docs/edge/getting-started) page
+- [Issues](https://github.com/ferentin-net/ferentin-service-edge/issues) — for bugs in the deployment recipes themselves; image / source-code issues belong in [`ferentin-platform`](https://github.com/ferentin-net/ferentin-platform/issues)
 - [Contact Support](mailto:support@ferentin.com)
 
 ## License
 
-Proprietary - Ferentin
+Proprietary — copyright Ferentin. The deployment recipes in this repository are provided as configuration templates for licensed Ferentin Service Edge customers. Contact [support@ferentin.com](mailto:support@ferentin.com) for licensing details.
