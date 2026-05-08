@@ -14,7 +14,7 @@ keywords:
 
 home: https://github.com/ferentin-net/ferentin-service-edge
 sources:
-  - https://github.com/ferentin-net/ferentin-platform
+  - https://github.com/ferentin-net/ferentin-service-edge
 
 maintainers:
   - name: Ferentin

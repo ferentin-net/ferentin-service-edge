@@ -3,12 +3,11 @@
 Hardened LLM and MCP gateway container — deployed at the customer edge with policy enforcement, multi-provider routing, and direct mTLS telemetry to the Ferentin control plane.
 
 [![Container Image](https://img.shields.io/badge/ghcr.io-ferentin--net%2Fservice--edge-2496ED?logo=docker&logoColor=white)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
-[![Latest Release](https://img.shields.io/github/v/tag/ferentin-net/ferentin-platform?filter=service-edge-*&label=latest%20release&color=blue)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
 [![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
 [![Signed](https://img.shields.io/badge/signed-cosign-green)](#security-features)
 [![License](https://img.shields.io/badge/license-proprietary-lightgrey)](#license)
 
-This repository carries the deployment recipes — Docker Compose, Kubernetes manifests, Helm chart, AWS ECS task definitions, Fly.io / Render / Railway configs — for the `ghcr.io/ferentin-net/service-edge` container. The image source and CI/CD live in [`ferentin-platform`](https://github.com/ferentin-net/ferentin-platform); this repo is updated automatically on each release.
+This repository carries the deployment recipes — Docker Compose, Kubernetes manifests, Helm chart, AWS ECS task definitions, Fly.io / Render / Railway configs — for the `ghcr.io/ferentin-net/service-edge` container.
 
 ## Architecture at a glance
 
@@ -51,7 +50,7 @@ The edge sits between your application and upstream services. Workload data (LLM
 ### 1. Get an enrollment token
 
 1. Log into the [Ferentin Admin Console](https://admin.ferentin.net)
-2. Navigate to **Edge Nodes** > **Add Edge Node**
+2. Navigate to [**Private Edges**](https://admin.ferentin.net/manage/edges) → [**Enroll Edge**](https://admin.ferentin.net/manage/edges/new)
 3. Copy the enrollment token (single-use, 15-minute TTL by default)
 
 ### 2. Deploy with Docker
@@ -91,8 +90,6 @@ docker run -d \
   --cap-drop ALL \
   ghcr.io/ferentin-net/service-edge:0.4.1
 ```
-
-> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID` as environment variables.** They're derived from the enrollment token's JWT claims (`tid`, `site_id`, `edge_id`, `edge_type`). Any env var that disagrees with the token aborts startup.
 
 ### 3. Verify enrollment
 
@@ -153,6 +150,18 @@ cosign verify ghcr.io/ferentin-net/service-edge:0.4.1 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
+Successful verification looks like:
+
+```
+Verification for ghcr.io/ferentin-net/service-edge:0.4.0 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The code-signing certificate was verified using trusted certificate authority certificates
+
+[{"critical":{"identity":{"docker-reference":"ghcr.io/ferentin-net/service-edge:0.4.0"},"image":{"docker-manifest-digest":"sha256:d805674eae5a9a845d7e0827e3220fae008e3fcdd686631c8e7448d54eadb3f7"},"type":"https://sigstore.dev/cosign/sign/v1"},"optional":{}}]
+```
+
 ## Deployment Guides
 
 | Platform | Guide |
@@ -186,11 +195,8 @@ The image runs as non-root UID 1000. Persistent volumes need `chown -R 1000:1000
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `ENROLLMENT_TOKEN` | Yes (first run) | — | JWT enrollment token from admin console. Single-use, 15-min TTL. Bootstrap auto-triggers when set and no certs are on the volume; on warm restarts the token is harmless (the runner short-circuits on valid certs). |
-| `SPRING_PROFILES_ACTIVE` | No | `aws-secure` | `aws-secure` for production, `nginx` for local dev against a self-hosted control plane. |
 | `BOOTSTRAP_ENABLED` | No | `true` | Kill-switch only. Set to `false` to suppress bootstrap entirely. Operators should not flip this in normal use. |
 | `BOOTSTRAP_FORCE` | No | `false` | Force re-enrollment even when valid certs exist. Used during recovery. |
-
-> **Identity is derived from the JWT, not from environment variables.** Tenant ID, site ID, edge ID, and edge type all come from the enrollment token's claims (`tid`, `site_id`, `edge_id`, `edge_type`). Setting `TENANT_ID`, `SITE_ID`, or `EDGE_ID` as env vars is unnecessary and any mismatch with the token aborts startup.
 
 ### Security
 
@@ -395,35 +401,10 @@ The image is hardened with:
 
 End-to-end TLS for workload traffic: clients reach the edge over HTTPS (port 9443) using the Ferentin-issued server cert, and the edge re-encrypts when calling upstream LLMs and MCP servers. There is no plaintext hop. See [TLS.md](TLS.md) for load-balancer topologies.
 
-## CI/CD
-
-The image is built and published from the [`ferentin-platform`](https://github.com/ferentin-net/ferentin-platform) source repo. This deployment-recipes repo is downstream of releases:
-
-```mermaid
-flowchart LR
-    DEV["Push tag<br/>service-edge-X.Y.Z<br/>(ferentin-platform)"]
-    BUILD["Build & push<br/>multi-arch image<br/>+ cosign sign"]
-    GHCR["ghcr.io/<br/>ferentin-net/<br/>service-edge"]
-    BUMP["update-version.yml<br/>(this repo)"]
-    DEV --> BUILD
-    BUILD --> GHCR
-    BUILD --> BUMP
-    BUMP -->|"sed-bumps recipes"| RECIPES["docker-compose.yml<br/>kubernetes/deployment.yaml<br/>helm/values.yaml<br/>fly.toml<br/>render.yaml<br/>ECS task-definition.json"]
-```
-
-When a `service-edge-X.Y.Z` tag is pushed in `ferentin-platform`:
-
-1. The platform repo's `build-service-edge-image.yml` workflow builds a multi-arch image (amd64 + arm64), pushes to GHCR and ECR, and signs with cosign.
-2. The same workflow then triggers `update-version.yml` in this repo via `gh workflow run`, passing the new version.
-3. `update-version.yml` runs `sed` across the deployment recipes — bumping every `ghcr.io/ferentin-net/service-edge:X.Y.Z` reference, plus `SERVICE_EDGE_VERSION=` in the env file, plus `appVersion` in `helm/Chart.yaml`.
-4. The auto-bump produces a single `chore: update service-edge image to vX.Y.Z` commit on `main`.
-
-This means **users pulling the recipes from this repo always get the latest pinned version**. If you don't want auto-bumps, vendor a copy of the recipes into your own infra repo and pin to a specific commit / tag of this one.
-
 ## Support
 
 - [Documentation](https://docs.ferentin.net) — full operator guides, including the [Service Edge — Getting Started](https://docs.ferentin.net/docs/edge/getting-started) page
-- [Issues](https://github.com/ferentin-net/ferentin-service-edge/issues) — for bugs in the deployment recipes themselves; image / source-code issues belong in [`ferentin-platform`](https://github.com/ferentin-net/ferentin-platform/issues)
+- [Issues](https://github.com/ferentin-net/ferentin-service-edge/issues) — for bugs in the deployment recipes
 - [Contact Support](mailto:support@ferentin.com)
 
 ## License
