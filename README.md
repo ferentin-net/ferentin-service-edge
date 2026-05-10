@@ -3,11 +3,12 @@
 Hardened LLM and MCP gateway container — deployed at the customer edge with policy enforcement, multi-provider routing, and direct mTLS telemetry to the Ferentin control plane.
 
 [![Container Image](https://img.shields.io/badge/ghcr.io-ferentin--net%2Fservice--edge-2496ED?logo=docker&logoColor=white)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
+[![Docker Hub](https://img.shields.io/badge/docker.io-ferentin%2Fservice--edge-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/ferentin/service-edge)
 [![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
 [![Signed](https://img.shields.io/badge/signed-cosign-green)](#security-features)
 [![License](https://img.shields.io/badge/license-proprietary-lightgrey)](#license)
 
-This repository carries the deployment recipes — Docker Compose, Kubernetes manifests, Helm chart, AWS ECS task definitions, Fly.io / Render / Railway configs — for the `ghcr.io/ferentin-net/service-edge` container.
+This repository carries the deployment recipes — Docker Compose, Kubernetes manifests, Helm chart, AWS ECS task definitions, Fly.io / Render / Railway configs — for the Service Edge container, published to both [GitHub Container Registry](https://github.com/orgs/ferentin-net/packages/container/package/service-edge) and [Docker Hub](https://hub.docker.com/r/ferentin/service-edge).
 
 ## Architecture at a glance
 
@@ -116,10 +117,14 @@ curl -X POST https://localhost:9443/v1/mcp/<server-slug> \
 
 ## Container Image
 
-| Registry | Image |
-|---|---|
-| GitHub Container Registry | `ghcr.io/ferentin-net/service-edge` |
-| Amazon ECR | `089534985149.dkr.ecr.us-east-1.amazonaws.com/ferentin/service-edge` |
+The image is published to two public registries. Both carry **identical content** — same digest, same multi-arch manifest, same cosign signature — so consumers can pick whichever fits their environment.
+
+| Registry | Image | When to choose |
+|---|---|---|
+| **GitHub Container Registry** *(recommended)* | `ghcr.io/ferentin-net/service-edge` | No anonymous pull rate limit — preferred for production clusters and CI |
+| **Docker Hub** *(mirror)* | `ferentin/service-edge` | Use when your environment allowlists `docker.io` but not `ghcr.io`, or for short copy-paste evaluation |
+
+> **Heads-up on Docker Hub rate limits.** Docker Hub caps anonymous pulls at 100 per 6 hours per source IP. A multi-replica edge fleet behind a NAT gateway will hit that ceiling on a single rolling restart. Authenticate Docker pulls (`docker login`) or prefer GHCR for production.
 
 **Architectures**: `linux/amd64`, `linux/arm64` (manifest list — Docker pulls the right variant automatically).
 
