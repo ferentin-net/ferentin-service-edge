@@ -96,7 +96,7 @@ gcloud run services replace service.yaml --region=$REGION
 
 # Or, equivalent CLI form:
 gcloud run deploy service-edge \
-  --image=ghcr.io/ferentin-net/service-edge:0.4.4 \
+  --image=ghcr.io/ferentin-net/service-edge:0.5.0 \
   --region=$REGION \
   --port=9080 \
   --service-account=ferentin-edge-runtime@$PROJECT_ID.iam.gserviceaccount.com \
