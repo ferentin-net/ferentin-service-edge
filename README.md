@@ -344,14 +344,84 @@ To change `FERENTIN_KEY_PASSPHRASE` without re-enrolling:
 - If rotation fails (e.g., wrong old passphrase), the original files are left intact.
 - Neither passphrase is logged.
 
-### Re-enrollment
+### Upgrading the container image
 
-If certs are revoked or the cert volume is lost, re-enroll:
+Routine image upgrades — patch releases, minor bumps, security fixes — do **not** require re-enrollment. The edge's identity (mTLS keys, server cert, tenant ID, site ID, edge ID) lives on the `service-edge-certs` persistent volume; a new container with the same volumes mounted finds the existing certs and skips bootstrap entirely.
+
+```bash
+# 1. Stop and remove the running container (frees the name)
+docker stop service-edge
+docker rm service-edge
+
+# 2. Start a new container with the same volumes, same passphrase,
+#    new image tag. ENROLLMENT_TOKEN can be omitted — it's ignored
+#    when valid certs exist on the volume (and the original is
+#    single-use and 15-min TTL, so it's expired anyway).
+docker run -d \
+  --name service-edge \
+  --read-only \
+  -v service-edge-certs:/opt/ferentin/certs:rw \
+  -v service-edge-policy:/opt/ferentin/policy:rw \
+  --tmpfs /opt/ferentin/logs:rw,uid=1000,gid=1000,noexec,nosuid,size=100m \
+  --tmpfs /opt/ferentin/data:rw,uid=1000,gid=1000,noexec,nosuid,size=50m \
+  --tmpfs /opt/ferentin/tmp:rw,uid=1000,gid=1000,noexec,nosuid,size=100m \
+  -p 9443:9443 \
+  -e FERENTIN_KEY_PASSPHRASE="$FERENTIN_KEY_PASSPHRASE" \
+  -e SPRING_PROFILES_ACTIVE=aws-secure \
+  --security-opt no-new-privileges:true \
+  --cap-drop ALL \
+  ghcr.io/ferentin-net/service-edge:NEW_VERSION
+```
+
+**Critical:**
+
+- `FERENTIN_KEY_PASSPHRASE` must be the **same value** used at first enrollment — the persisted private keys are encrypted with it. Mismatch = startup failure. For changing the passphrase, use [Passphrase rotation](#passphrase-rotation), don't hard-swap.
+- Don't set `BOOTSTRAP_FORCE=true` on a routine upgrade — that's the explicit re-enrollment path.
+
+After the new container starts, confirm the listener rebound to the existing cert:
+
+```bash
+docker logs service-edge 2>&1 | grep TlsListenerService
+# Expected: "TLS HTTPS listener bound on port 9443 (reason: application-ready)"
+```
+
+### Re-enrollment (fresh install)
+
+When you need a completely fresh edge — recovery from a lost passphrase, decommission + redeploy at the same site, testing the enrollment flow — tear down all three pieces of state: the container, the volumes, and the admin console entry. **Reusing the same container and volume names** requires the full teardown:
+
+```bash
+# 1. Stop and remove the container (frees the name)
+docker stop service-edge 2>/dev/null
+docker rm service-edge 2>/dev/null
+
+# 2. Remove the volumes (drops old certs + cached policy bundle)
+docker volume rm service-edge-certs service-edge-policy
+
+# 3. In the admin console, revoke or delete the old edge entry at
+#    https://admin.ferentin.net/manage/edges
+#    Otherwise the cp-server holds a stale record bound to the old
+#    cert and the console shows a zombie edge row that never checks in.
+
+# 4. Mint a fresh enrollment token (the original is single-use,
+#    15-min TTL; even if saved, it's expired).
+
+# 5. Re-run the Quick Start with the new token.
+```
+
+**Gotchas:**
+
+- `docker volume rm` fails if any container (even stopped) references the volume — step 1 must complete first.
+- The old `FERENTIN_KEY_PASSPHRASE` has no value to preserve once the volume is gone; the keys it encrypted are gone with it. Generate a fresh one or reuse — nothing is linked to it anymore.
+- Skipping the admin console cleanup is the most common mistake. The new edge enrolls cleanly, but the console keeps the old entry indefinitely (nothing is checking in as it), and depending on the enrollment policy you may hit a `site_id` collision on the new enrollment.
+- If your tooling pre-creates the volume names (e.g., Terraform), wipe contents instead of recreating: `docker run --rm -v service-edge-certs:/c -v service-edge-policy:/p alpine sh -c 'rm -rf /c/* /p/*'`, then redo the `chown` step from the Quick Start.
+
+### Forced re-enrollment without dropping volumes
+
+There's also a `BOOTSTRAP_FORCE=true` path that re-enrolls into the same on-disk volume — used mainly for cert-rotation testing or recovery when revoked certs are still on the volume. It's fragile (mixes new and old state, doesn't clean up the admin console record) and not the recommended fresh-install path; prefer the full teardown above.
 
 1. Obtain a fresh enrollment token from the admin console.
-2. Set `BOOTSTRAP_FORCE=true` to bypass the on-disk-cert short-circuit.
-3. Restart the container.
-4. After successful re-enrollment, remove `BOOTSTRAP_FORCE` from the env.
+2. Restart the container with `BOOTSTRAP_FORCE=true` and the new `ENROLLMENT_TOKEN` set.
+3. After successful re-enrollment, remove `BOOTSTRAP_FORCE` from the env on the next restart.
 
 ## Troubleshooting
 
