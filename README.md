@@ -89,7 +89,7 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=aws-secure \
   --security-opt no-new-privileges:true \
   --cap-drop ALL \
-  ghcr.io/ferentin-net/service-edge:0.5.1
+  ghcr.io/ferentin-net/service-edge:0.5.2
 ```
 
 ### 3. Verify enrollment
@@ -150,7 +150,7 @@ Browse all published versions on the [GHCR package page](https://github.com/orgs
 Images are signed with [cosign](https://github.com/sigstore/cosign) using GitHub's OIDC keyless flow:
 
 ```bash
-cosign verify ghcr.io/ferentin-net/service-edge:0.5.1 \
+cosign verify ghcr.io/ferentin-net/service-edge:0.5.2 \
   --certificate-identity-regexp 'https://github.com/ferentin-net/ferentin-platform/.+' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -158,13 +158,13 @@ cosign verify ghcr.io/ferentin-net/service-edge:0.5.1 \
 Successful verification looks like:
 
 ```
-Verification for ghcr.io/ferentin-net/service-edge:0.5.1 --
+Verification for ghcr.io/ferentin-net/service-edge:0.5.2 --
 The following checks were performed on each of these signatures:
   - The cosign claims were validated
   - Existence of the claims in the transparency log was verified offline
   - The code-signing certificate was verified using trusted certificate authority certificates
 
-[{"critical":{"identity":{"docker-reference":"ghcr.io/ferentin-net/service-edge:0.5.1"},"image":{"docker-manifest-digest":"sha256:d805674eae5a9a845d7e0827e3220fae008e3fcdd686631c8e7448d54eadb3f7"},"type":"https://sigstore.dev/cosign/sign/v1"},"optional":{}}]
+[{"critical":{"identity":{"docker-reference":"ghcr.io/ferentin-net/service-edge:0.5.2"},"image":{"docker-manifest-digest":"sha256:d805674eae5a9a845d7e0827e3220fae008e3fcdd686631c8e7448d54eadb3f7"},"type":"https://sigstore.dev/cosign/sign/v1"},"optional":{}}]
 ```
 
 ## Deployment Guides
