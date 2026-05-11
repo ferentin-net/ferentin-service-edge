@@ -1,11 +1,15 @@
 # Ferentin Service Edge
 
-Hardened LLM and MCP gateway container — deployed at the customer edge with policy enforcement, multi-provider routing, and direct mTLS telemetry to the Ferentin control plane.
+Hardened, signed, self-hosted [LLM router](https://ferentin.com/glossary) and [MCP gateway](https://ferentin.com/glossary) container — deployed at the customer edge with policy enforcement, multi-provider routing, and direct mTLS telemetry to the [Ferentin control plane](https://ferentin.com/platform).
+
+Published by **[Ferentin](https://ferentin.com)** — the enterprise AI control plane.
 
 [![Container Image](https://img.shields.io/badge/ghcr.io-ferentin--net%2Fservice--edge-2496ED?logo=docker&logoColor=white)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
 [![Docker Hub](https://img.shields.io/badge/docker.io-ferentin%2Fservice--edge-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/ferentin/service-edge)
 [![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)
-[![Signed](https://img.shields.io/badge/signed-cosign-green)](#security-features)
+[![Signed with Cosign](https://img.shields.io/badge/signed-cosign%20keyless-success?logo=sigstore&logoColor=white)](#verifying-image-signatures)
+[![SBOM](https://img.shields.io/badge/SBOM-attached-success?logo=securityscorecard&logoColor=white)](#verifying-image-signatures)
+[![Java](https://img.shields.io/badge/Java-25%20LTS-007396?logo=openjdk&logoColor=white)](https://ferentin.com/blog)
 [![License](https://img.shields.io/badge/license-proprietary-lightgrey)](#license)
 
 This repository carries the deployment recipes — Docker Compose, Kubernetes manifests, Helm chart, AWS ECS task definitions, Fly.io / Render / Railway configs — for the Service Edge container, published to both [GitHub Container Registry](https://github.com/orgs/ferentin-net/packages/container/package/service-edge) and [Docker Hub](https://hub.docker.com/r/ferentin/service-edge).
@@ -34,6 +38,18 @@ flowchart LR
 ```
 
 The edge sits between your application and upstream services. Workload data (LLM prompts, MCP tool calls, responses) flows through the edge but stays inside your network whenever the destination does — only signed policy bundles (in) and audit telemetry (out) travel over the mTLS gRPC channel to the Ferentin Cloud.
+
+## Why use it
+
+Most teams hit the same wall around the second or third LLM integration:
+
+- **Shadow AI** — every team picks their own provider, no central audit trail.
+- **Compliance black holes** — SOC2, HIPAA, GDPR need provable data residency and access controls on AI traffic.
+- **Vendor lock-in** — switching from OpenAI to Anthropic means rewriting clients.
+- **No DLP** — prompts leak PII, customer data, and source code straight to third-party LLMs.
+- **MCP sprawl** — every assistant wants its own MCP server tokens, with no consent flow or session controls.
+
+The Service Edge solves all of that with one container in your network. See the [LLM router comparison](https://ferentin.com/compare) for how this approach compares to API gateways, LiteLLM, and other tools.
 
 ## Features
 
@@ -147,25 +163,28 @@ Browse all published versions on the [GHCR package page](https://github.com/orgs
 
 ### Verifying image signatures
 
-Images are signed with [cosign](https://github.com/sigstore/cosign) using GitHub's OIDC keyless flow:
+Every published image is **signed with [Sigstore Cosign](https://docs.sigstore.dev/cosign/overview/)** and ships with an attached **SBOM** (SPDX).
+
+Customers in regulated environments who need to wire image-signature verification into their admission controller, CI pipeline, or compliance evidence should contact [security@ferentin.com](mailto:security@ferentin.com) — we'll provide the exact verification recipe (signing identity, public key, or attestation predicate) appropriate to your environment.
+
+#### Inspect the SBOM
 
 ```bash
-cosign verify ghcr.io/ferentin-net/service-edge:0.5.5 \
-  --certificate-identity-regexp 'https://github.com/ferentin-net/ferentin-platform/.+' \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+# Via buildx
+docker buildx imagetools inspect \
+  --format '{{ json .SBOM }}' \
+  ghcr.io/ferentin-net/service-edge:0.5.5
+
+# Or via cosign
+cosign download sbom ghcr.io/ferentin-net/service-edge:0.5.5 > sbom.spdx.json
 ```
 
-Successful verification looks like:
+#### Reproducible builds
 
-```
-Verification for ghcr.io/ferentin-net/service-edge:0.5.5 --
-The following checks were performed on each of these signatures:
-  - The cosign claims were validated
-  - Existence of the claims in the transparency log was verified offline
-  - The code-signing certificate was verified using trusted certificate authority certificates
-
-[{"critical":{"identity":{"docker-reference":"ghcr.io/ferentin-net/service-edge:0.5.5"},"image":{"docker-manifest-digest":"sha256:d805674eae5a9a845d7e0827e3220fae008e3fcdd686631c8e7448d54eadb3f7"},"type":"https://sigstore.dev/cosign/sign/v1"},"optional":{}}]
-```
+- **Base images pinned by digest** in the Dockerfile (not `:latest`).
+- **Gradle distribution pinned by SHA-256.**
+- **JAR built on a native GitHub-hosted runner** and copied into the image.
+- **OCI labels** record `org.opencontainers.image.source`, `vendor`, `version`, and security posture flags (`com.ferentin.security.non-root=true`, `read-only-rootfs=true`).
 
 ## Deployment Guides
 
@@ -479,6 +498,36 @@ The image is hardened with:
 
 End-to-end TLS for workload traffic: clients reach the edge over HTTPS (port 9443) using the Ferentin-issued server cert, and the edge re-encrypts when calling upstream LLMs and MCP servers. There is no plaintext hop. See [TLS.md](TLS.md) for load-balancer topologies.
 
+## Resources
+
+### Product & documentation
+
+- 🌐 **[ferentin.com](https://ferentin.com)** — product homepage
+- 🧭 **[Platform overview](https://ferentin.com/platform)** — how Service Edge fits with the control plane
+- 🔐 **[Security & compliance](https://ferentin.com/security)** — controls, certifications, threat model
+- 🚀 **[Get started](https://ferentin.com/get-started)** — sign up, get an enrollment token
+- 📚 **[Guides](https://ferentin.com/guides)** — deployment & integration tutorials
+- 🔍 **[LLM info hub](https://ferentin.com/llm-info)** — model cards, pricing, capabilities
+- 📖 **[Glossary](https://ferentin.com/glossary)** — LLM router, MCP, policy enforcement defined
+- 🆚 **[Comparisons](https://ferentin.com/compare)** — Ferentin vs LiteLLM, vs API gateways, vs DIY proxies
+- ✍️ **[Engineering blog](https://ferentin.com/blog)**
+- 📣 **[Book a demo](https://ferentin.com/book-a-demo)**
+- 📚 **[Operator docs](https://docs.ferentin.net)** — including [Service Edge — Getting Started](https://docs.ferentin.net/docs/edge/getting-started)
+
+### Registries & releases
+
+- 📦 **[GHCR](https://github.com/orgs/ferentin-net/packages/container/package/service-edge)** — `ghcr.io/ferentin-net/service-edge`
+- 🐳 **[Docker Hub](https://hub.docker.com/r/ferentin/service-edge)** — `ferentin/service-edge`
+- 📜 **[Release notes](https://github.com/ferentin-net/ferentin-service-edge/releases)**
+- 🛡️ **[SECURITY.md](SECURITY.md)** — vulnerability disclosure & hardening notes
+
+### Compliance & policy
+
+- 🔒 **[Privacy policy](https://ferentin.com/privacy-policy)**
+- 📄 **[Terms of service](https://ferentin.com/terms-of-service)**
+- ✅ **[Acceptable use policy](https://ferentin.com/acceptable-use-policy)**
+- 🤝 **[Sub-processors](https://ferentin.com/sub-processors)**
+
 ## Support
 
 - [Documentation](https://docs.ferentin.net) — full operator guides, including the [Service Edge — Getting Started](https://docs.ferentin.net/docs/edge/getting-started) page
@@ -488,3 +537,7 @@ End-to-end TLS for workload traffic: clients reach the edge over HTTPS (port 944
 ## License
 
 Proprietary — copyright Ferentin. The deployment recipes in this repository are provided as configuration templates for licensed Ferentin Service Edge customers. Contact [support@ferentin.com](mailto:support@ferentin.com) for licensing details.
+
+---
+
+<sub>**Keywords:** LLM router · AI gateway · OpenAI-compatible proxy · Anthropic Claude proxy · MCP gateway · Model Context Protocol · self-hosted AI proxy · enterprise AI control plane · LLM policy enforcement · LLM DLP · AI audit logging · multi-provider LLM router · zero-trust AI · mTLS · cosign-signed container · SBOM · Java 25 · Spring Boot · Sigstore · supply-chain security · GDPR · SOC2 · HIPAA · data sovereignty · AI governance · Bedrock proxy · Vertex AI · xAI Grok · Mistral · vLLM · Ollama. Maintained by [Ferentin](https://ferentin.com).</sub>
