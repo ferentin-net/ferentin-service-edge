@@ -80,7 +80,7 @@ gcloud compute instances create-with-container service-edge-1 \
   --machine-type=e2-standard-2 \
   --image-family=cos-stable \
   --image-project=cos-cloud \
-  --container-image=ghcr.io/ferentin-net/service-edge:0.5.2 \
+  --container-image=ghcr.io/ferentin-net/service-edge:0.5.4 \
   --service-account=ferentin-edge-runtime@$PROJECT_ID.iam.gserviceaccount.com \
   --scopes=cloud-platform \
   --tags=ferentin-edge \
@@ -117,7 +117,7 @@ EXTERNAL_IP=$(gcloud compute instances describe service-edge-1 \
 
 # SSH into the VM and check container status
 gcloud compute ssh service-edge-1 --zone=$ZONE -- \
-  'docker ps && docker logs $(docker ps -q --filter ancestor=ghcr.io/ferentin-net/service-edge:0.5.2 2>&1 | grep TlsListenerService'
+  'docker ps && docker logs $(docker ps -q --filter ancestor=ghcr.io/ferentin-net/service-edge:0.5.4 2>&1 | grep TlsListenerService'
 
 # Test from outside (if cert verification is set up)
 curl --cacert ferentin-ca.pem https://$EXTERNAL_IP:9443/v1/models
@@ -146,7 +146,7 @@ gcloud compute instance-templates create-with-container ferentin-edge-tmpl \
   --machine-type=e2-standard-2 \
   --image-family=cos-stable \
   --image-project=cos-cloud \
-  --container-image=ghcr.io/ferentin-net/service-edge:0.5.2 \
+  --container-image=ghcr.io/ferentin-net/service-edge:0.5.4 \
   --service-account=ferentin-edge-runtime@$PROJECT_ID.iam.gserviceaccount.com \
   --scopes=cloud-platform \
   --tags=ferentin-edge \
