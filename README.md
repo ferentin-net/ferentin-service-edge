@@ -105,7 +105,7 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=aws-secure \
   --security-opt no-new-privileges:true \
   --cap-drop ALL \
-  ghcr.io/ferentin-net/service-edge:0.5.5
+  ghcr.io/ferentin-net/service-edge:0.5.6
 ```
 
 ### 3. Verify enrollment
@@ -173,10 +173,10 @@ Customers in regulated environments who need to wire image-signature verificatio
 # Via buildx
 docker buildx imagetools inspect \
   --format '{{ json .SBOM }}' \
-  ghcr.io/ferentin-net/service-edge:0.5.5
+  ghcr.io/ferentin-net/service-edge:0.5.6
 
 # Or via cosign
-cosign download sbom ghcr.io/ferentin-net/service-edge:0.5.5 > sbom.spdx.json
+cosign download sbom ghcr.io/ferentin-net/service-edge:0.5.6 > sbom.spdx.json
 ```
 
 #### Reproducible builds
