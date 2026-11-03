@@ -25,8 +25,8 @@ services:
       # Render terminates TLS at their proxy — disable port filtering
       - key: TLS_PORT_FILTERING_ENABLED
         value: "false"
-      # Don't set TENANT_ID, SITE_ID, or EDGE_ID — they're derived from the
-      # enrollment token's JWT claims. Mismatches abort startup.
+      # Don't set TENANT_ID, SITE_ID, or EDGE_ID — admin-api assigns them from
+      # the enrollment token. One that disagrees is ignored, with a warning.
     # Render supports one disk per service
     # Mount to parent and use subdirectories
     disk:

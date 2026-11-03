@@ -20,7 +20,7 @@ data:
   # The listener binds AFTER bootstrap completes — see TlsListenerService logs for confirmation.
   TLS_ENABLED: "true"
   TLS_PORT: "9443"
-  # Tenant/site/edge identity is derived from the JWT claims at bootstrap.
-  # Don't set TENANT_ID, SITE_ID, or EDGE_ID — mismatches with the token abort startup.
+  # Tenant/site/edge identity is assigned by admin-api from the enrollment token at bootstrap.
+  # Don't set TENANT_ID, SITE_ID, or EDGE_ID — one that disagrees is ignored, with a warning.
   # BOOTSTRAP_ENABLED is a kill-switch only; bootstrap auto-triggers when ENROLLMENT_TOKEN
   # is present and no certs are on the cert PVC.

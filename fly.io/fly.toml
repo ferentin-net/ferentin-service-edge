@@ -15,8 +15,8 @@ primary_region = "iad"
   # reaches the container on port 9080 (Fly forwards plaintext internally).
   TLS_PORT_FILTERING_ENABLED = "false"
   # Bootstrap auto-triggers when ENROLLMENT_TOKEN is set and no certs are on the
-  # mounted volume. Tenant / site / edge identity is derived from the JWT claims
-  # — don't set TENANT_ID / SITE_ID / EDGE_ID here.
+  # mounted volume. Tenant / site / edge identity is assigned by admin-api from
+  # the enrollment token — don't set TENANT_ID / SITE_ID / EDGE_ID here.
   # Set secrets via `fly secrets set`:
   #   fly secrets set ENROLLMENT_TOKEN=<token>
   #   fly secrets set FERENTIN_KEY_PASSPHRASE=$(openssl rand -base64 48)

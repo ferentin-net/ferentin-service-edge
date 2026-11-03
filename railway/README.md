@@ -73,7 +73,7 @@ Configure in Railway dashboard or CLI:
 | `BOOTSTRAP_ENABLED` | No | Kill-switch only. Operators should not flip this in normal use. |
 | `BOOTSTRAP_FORCE` | No | Force re-enrollment during recovery. |
 
-> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID`.** Identity is derived from the JWT claims at bootstrap.
+> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID`.** Identity is assigned by admin-api from the enrollment token at bootstrap.
 
 ## Volumes
 

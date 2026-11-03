@@ -62,7 +62,7 @@ The MCP Gateway proxies tool calls to upstream MCP servers (private, customer-ne
 | `bootstrap.existingSecret` | `""` | Name of secret containing `ENROLLMENT_TOKEN` and `key-passphrase`. |
 | `config.springProfile` | `aws-secure` | Spring profile (`aws-secure` for prod, `nginx` for local dev). |
 
-> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID`.** Tenant / site / edge identity is derived from the JWT claims (`tid`, `site_id`, `edge_id`, `edge_type`) at bootstrap; a mismatch with the token aborts startup.
+> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID`.** Tenant / site / edge identity is assigned by admin-api from the enrollment token at bootstrap; an env var that disagrees with the enrolled identity is ignored, with a warning.
 
 ### TLS Configuration
 
