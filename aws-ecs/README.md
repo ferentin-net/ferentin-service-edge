@@ -103,7 +103,7 @@ What's active is controlled by the enrollment token's `capabilities` claim, not 
 | `BOOTSTRAP_ENABLED` | No | Kill-switch only — set to `false` to suppress bootstrap. Operators should not flip this in normal use. |
 | `BOOTSTRAP_FORCE` | No | Force re-enrollment even when valid certs exist. Used during recovery scenarios. |
 
-> **Don't add `TENANT_ID`, `SITE_ID`, or `EDGE_ID` to the task definition.** Tenant / site / edge identity is derived from the JWT claims at bootstrap; a mismatch with the token aborts startup.
+> **Don't add `TENANT_ID`, `SITE_ID`, or `EDGE_ID` to the task definition.** Tenant / site / edge identity is assigned by admin-api from the enrollment token at bootstrap; an env var that disagrees with the enrolled identity is ignored, with a warning.
 
 ## Security
 

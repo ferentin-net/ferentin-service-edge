@@ -53,7 +53,7 @@ data:
   TLS_PORT: "9443"
 ```
 
-> Don't add `TENANT_ID`, `SITE_ID`, `EDGE_ID`, or `BOOTSTRAP_ENABLED` to the ConfigMap. Tenant / site / edge identity is derived from the JWT claims in the enrollment token (`tid`, `site_id`, `edge_id`, `edge_type`); a mismatch aborts startup. `BOOTSTRAP_ENABLED` is a kill-switch only — bootstrap auto-triggers when `ENROLLMENT_TOKEN` is present and no certs are on the cert PVC.
+> Don't add `TENANT_ID`, `SITE_ID`, `EDGE_ID`, or `BOOTSTRAP_ENABLED` to the ConfigMap. Tenant / site / edge identity is assigned by admin-api from the enrollment token at bootstrap; an env var that disagrees with the enrolled identity is ignored, with a warning. `BOOTSTRAP_ENABLED` is a kill-switch only — bootstrap auto-triggers when `ENROLLMENT_TOKEN` is present and no certs are on the cert PVC.
 
 ### 3. Storage Class
 
@@ -160,7 +160,7 @@ spec:
 Once enrolled successfully:
 
 1. mTLS client cert + HTTPS server cert (both Ferentin-CA-signed) are stored in the cert PVC.
-2. Edge config (tenant ID, site ID, edge ID, edge type — all from JWT claims) is persisted.
+2. Edge config (tenant ID, site ID, edge ID, edge type — all from the bootstrap response) is persisted.
 3. The HTTPS listener binds on port 9443 — confirm with `kubectl logs -l app.kubernetes.io/name=service-edge | grep TlsListenerService` (look for `TLS HTTPS listener bound on port 9443`).
 4. Policy bundle is downloaded to the policy PVC.
 

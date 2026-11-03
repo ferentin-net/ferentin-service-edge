@@ -56,7 +56,7 @@ SPRING_PROFILES_ACTIVE=aws-secure
 SERVICE_EDGE_VERSION=0.5.6
 ```
 
-> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID`.** They're derived from the enrollment token's JWT claims at bootstrap. Any env var that disagrees with the token aborts startup.
+> **Don't set `TENANT_ID`, `SITE_ID`, or `EDGE_ID`.** They're assigned by admin-api from the enrollment token at bootstrap. An env var that disagrees with the enrolled identity is ignored, with a warning.
 
 ## Enrollment Process
 
@@ -64,7 +64,7 @@ On first startup with a valid `ENROLLMENT_TOKEN` and no certs on the persistent 
 
 1. **Connects** to the control plane (URL determined by Spring profile).
 2. **Exchanges** the bootstrap token for long-lived mTLS client cert + HTTPS server cert (both signed by the Ferentin CA).
-3. **Persists** the certs and the edge config (tenant ID, site ID, edge ID, edge type — all from JWT claims) to `/opt/ferentin/certs`.
+3. **Persists** the certs and the edge config (tenant ID, site ID, edge ID, edge type — all from the bootstrap response) to `/opt/ferentin/certs`.
 4. **Downloads** the initial policy bundle to `/opt/ferentin/policy`.
 5. **Binds** the HTTPS listener on port 9443 once the server cert is in place.
 

@@ -221,7 +221,7 @@ The image runs as non-root UID 1000. Persistent volumes need `chown -R 1000:1000
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `ENROLLMENT_TOKEN` | Yes (first run) | — | JWT enrollment token from admin console. Single-use, 15-min TTL. Bootstrap auto-triggers when set and no certs are on the volume; on warm restarts the token is harmless (the runner short-circuits on valid certs). |
+| `ENROLLMENT_TOKEN` | Yes (first run) | — | Enrollment token (`fedgeenroll_…`) from the admin console, shown once when it is created. Single-use, 15-min TTL by default. Bootstrap auto-triggers when set and no certs are on the volume; on warm restarts the token is harmless (the runner short-circuits on valid certs). |
 | `BOOTSTRAP_ENABLED` | No | `true` | Kill-switch only. Set to `false` to suppress bootstrap entirely. Operators should not flip this in normal use. |
 | `BOOTSTRAP_FORCE` | No | `false` | Force re-enrollment even when valid certs exist. Used during recovery. |
 

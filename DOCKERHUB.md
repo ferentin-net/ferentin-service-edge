@@ -177,7 +177,7 @@ Releases are also mirrored to:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ENROLLMENT_TOKEN` | First run | JWT issued by your Ferentin admin console |
+| `ENROLLMENT_TOKEN` | First run | Enrollment token (`fedgeenroll_…`) from your Ferentin admin console |
 | `SPRING_PROFILES_ACTIVE` | Yes | `aws-secure` (production) or `nginx` (dev) |
 | `FERENTIN_KEY_PASSPHRASE` | Yes | Passphrase that decrypts the edge's at-rest cred cache |
 | `EDGE_CA_BUNDLE` | Optional | Custom CA bundle (PEM) for corporate proxies |
